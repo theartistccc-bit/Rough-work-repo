@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preset Extractor</title>
+<meta name="theme-color" content="#1b1d22">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #ffffff; --fg: #1b1d22; --muted: #5d6470;
+    --line: #dde0e6; --accent: #2f6fd6; --accent-fg: #ffffff; --ok: #1f8a4c;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14161a; --card: #1e2127; --fg: #eceef2; --muted: #9aa1ad;
+      --line: #2e323a; --accent: #5b93ef; --accent-fg: #0d1117; --ok: #4cc27f; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px))
+             calc(24px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  main { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; padding-top: 20px; }
+  h1 { font-size: 1.5rem; margin: 0; }
+  p { margin: 0; color: var(--muted); }
+  .drop {
+    display: grid; place-items: center; gap: 6px; text-align: center;
+    padding: 28px 16px; border: 2px dashed var(--line); border-radius: 14px;
+    background: var(--card); cursor: pointer;
+  }
+  .drop.over { border-color: var(--accent); }
+  .drop strong { font-size: 1.05rem; }
+  input[type=file] { display: none; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  button {
+    flex: 1 1 160px; padding: 14px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  button:focus-visible, .drop:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--card); border-radius: 14px; border: 1px solid var(--line); }
+  li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  li .name { min-width: 0; overflow-wrap: anywhere; }
+  li .src { color: var(--muted); font-size: .8rem; }
+  .tag { flex: none; align-self: center; font-size: .75rem; font-weight: 700; color: var(--ok); }
+  #status { min-height: 1.4em; }
+  details { color: var(--muted); font-size: .9rem; }
+  details ol { padding-left: 1.2em; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Preset Extractor</h1>
+  <p>Load your Presetpro zip downloads. Only the preset files (.dng, .xmp, .lrtemplate) are kept. PDFs, .DS_Store and __MACOSX junk are dropped.</p>
+
+  <label class="drop" id="drop" for="picker" tabindex="0">
+    <strong>Tap to choose zip files</strong>
+    <span>or drop them here. You can pick several at once.</span>
+  </label>
+  <input type="file" id="picker" multiple accept=".zip,.dng,.xmp,.lrtemplate,application/zip">
+
+  <div id="status" aria-live="polite"></div>
+  <ul id="list" hidden></ul>
+
+  <div class="row">
+    <button class="primary" id="share" disabled>Send to Lightroom</button>
+    <button id="zip" disabled>Save as one zip</button>
+  </div>
+  <div class="row">
+    <button id="each" disabled>Save files one by one</button>
+    <button id="clear" disabled>Clear</button>
+  </div>
+
+  <details>
+    <summary>How to get them into Lightroom mobile</summary>
+    <ol>
+      <li><b>Send to Lightroom</b> opens the share sheet. Pick Lightroom (or "Save to Files" / "Save images").</li>
+      <li>DNG presets arrive as photos. Open one, tap <b>…</b> → <b>Create Preset</b>, name it, save.</li>
+      <li>XMP presets: in an edit, open <b>Presets</b> → <b>…</b> → <b>Import Presets</b> and choose the files or the zip.</li>
+    </ol>
+  </details>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const PRESET_EXT = /\.(dng|xmp|lrtemplate)$/i;
+const presets = new Map(); // filename -> { blob, source }
+
+const $ = id => document.getElementById(id);
+const picker = $('picker'), drop = $('drop'), list = $('list'), status = $('status');
+
+function isJunk(path) {
+  const base = path.split('/').pop();
+  return path.startsWith('__MACOSX/') || path.includes('/__MACOSX/') || base.startsWith('._') || base.startsWith('.');
+}
+
+function addPreset(name, blob, source) {
+  let key = name, n = 2;
+  while (presets.has(key)) {
+    if (presets.get(key).blob.size === blob.size) return; // same file loaded twice
+    key = name.replace(/(\.[^.]+)$/, ` (${n++})$1`);
+  }
+  presets.set(key, { blob, source });
+}
+
+async function readZip(data, source) {
+  const zip = await JSZip.loadAsync(data);
+  for (const entry of Object.values(zip.files)) {
+    if (entry.dir || isJunk(entry.name)) continue;
+    const base = entry.name.split('/').pop();
+    if (PRESET_EXT.test(base)) {
+      addPreset(base, await entry.async('blob'), source);
+    } else if (/\.zip$/i.test(base)) {
+      await readZip(await entry.async('arraybuffer'), base); // zip inside a zip
+    }
+  }
+}
+
+async function handleFiles(files) {
+  const before = presets.size;
+  status.textContent = 'Reading…';
+  for (const file of files) {
+    try {
+      if (/\.zip$/i.test(file.name)) await readZip(file, file.name);
+      else if (PRESET_EXT.test(file.name)) addPreset(file.name, file, file.name);
+    } catch (e) {
+      status.textContent = `Couldn't open ${file.name}. Make sure it's a complete zip download.`;
+      render(); return;
+    }
+  }
+  const added = presets.size - before;
+  status.textContent = added
+    ? `Found ${added} new preset${added === 1 ? '' : 's'}. ${presets.size} ready in total.`
+    : 'No preset files found in what you picked.';
+  render();
+}
+
+function render() {
+  list.innerHTML = '';
+  for (const [name, { source }] of presets) {
+    const li = document.createElement('li');
+    li.innerHTML = `<div class="name"></div><span class="tag"></span>`;
+    li.querySelector('.name').textContent = name;
+    const src = document.createElement('div');
+    src.className = 'src'; src.textContent = source.replace(/^[0-9a-f]{8}-/, '');
+    li.querySelector('.name').appendChild(src);
+    li.querySelector('.tag').textContent = name.split('.').pop().toUpperCase();
+    list.appendChild(li);
+  }
+  list.hidden = presets.size === 0;
+  for (const id of ['share', 'zip', 'each', 'clear']) $(id).disabled = presets.size === 0;
+}
+
+function asFiles() {
+  return [...presets].map(([name, { blob }]) =>
+    new File([blob], name, { type: /\.dng$/i.test(name) ? 'image/x-adobe-dng' : 'application/octet-stream' }));
+}
+
+function download(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+async function buildZip() {
+  const out = new JSZip();
+  for (const [name, { blob }] of presets) out.file(name, blob);
+  return out.generateAsync({ type: 'blob' });
+}
+
+$('share').onclick = async () => {
+  const files = asFiles();
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try { await navigator.share({ files, title: 'Lightroom presets' }); status.textContent = 'Shared.'; }
+    catch (e) { if (e.name !== 'AbortError') status.textContent = 'Sharing failed. Try "Save as one zip".'; }
+  } else {
+    status.textContent = "This browser can't share files, so the zip was saved instead.";
+    download(await buildZip(), 'Lightroom Presets.zip');
+  }
+};
+$('zip').onclick = async () => download(await buildZip(), 'Lightroom Presets.zip');
+$('each').onclick = () => asFiles().forEach((f, i) => setTimeout(() => download(f, f.name), i * 400));
+$('clear').onclick = () => { presets.clear(); status.textContent = ''; render(); };
+
+picker.onchange = () => { handleFiles([...picker.files]); picker.value = ''; };
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); picker.click(); } };
+['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFiles([...e.dataTransfer.files]));
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
