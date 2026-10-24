@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Red Light Tracker</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#667085; --line:#e3e6eb; --red:#d92d20; --accent:#1f6feb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151b; --card:#1b2029; --text:#e6e9ef; --muted:#98a2b3; --line:#2c3340; --red:#f97066; --accent:#58a6ff; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:24px 16px; }
+  h1 { margin:0 0 4px; font-size:24px; }
+  p.sub { margin:0 0 20px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  form { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
+  input, textarea { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:8px; }
+  .full { grid-column:1/-1; }
+  button { font:inherit; border:0; border-radius:6px; padding:9px 14px; cursor:pointer; background:var(--accent); color:#fff; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  button.del { background:transparent; color:var(--red); padding:4px 8px; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .bar input { flex:1; min-width:160px; }
+  .stats { display:flex; gap:24px; flex-wrap:wrap; }
+  .stats b { display:block; font-size:22px; }
+  .stats span { color:var(--muted); font-size:13px; }
+  .table { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; color:var(--muted); text-transform:uppercase; }
+  .plate { font-family:ui-monospace, monospace; font-weight:600; }
+  .repeat { color:var(--red); font-size:12px; font-weight:600; }
+  .empty { color:var(--muted); text-align:center; padding:24px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🚦 Red Light Tracker</h1>
+  <p class="sub">Log drivers who run red lights. The data is saved in this browser.</p>
+
+  <div class="card">
+    <form id="form">
+      <label>Plate number<input name="plate" required placeholder="ABC-123"></label>
+      <label>Location<input name="location" required placeholder="Main St & 5th Ave"></label>
+      <label>Date &amp; time<input name="when" type="datetime-local" required></label>
+      <label>Fine amount<input name="fine" type="number" min="0" step="0.01" placeholder="0.00"></label>
+      <label class="full">Notes<textarea name="notes" rows="2" placeholder="Vehicle colour, model, witness…"></textarea></label>
+      <div class="full"><button type="submit">Add offence</button></div>
+    </form>
+  </div>
+
+  <div class="card stats" id="stats"></div>
+
+  <div class="card">
+    <div class="bar">
+      <input id="search" placeholder="Search plate or location…">
+      <button class="ghost" id="export">Export CSV</button>
+      <button class="ghost" id="clear">Clear all</button>
+    </div>
+    <div class="table">
+      <table>
+        <thead><tr><th>Plate</th><th>Location</th><th>When</th><th>Fine</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+const KEY = 'red-light-offences';
+let offences = load();
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(offences)); } catch {}
+}
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function countByPlate() {
+  const counts = {};
+  for (const o of offences) counts[o.plate] = (counts[o.plate] || 0) + 1;
+  return counts;
+}
+
+function render() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const counts = countByPlate();
+  const list = offences
+    .filter(o => !q || o.plate.toLowerCase().includes(q) || o.location.toLowerCase().includes(q))
+    .sort((a, b) => b.when.localeCompare(a.when));
+
+  document.getElementById('rows').innerHTML = list.length ? list.map(o => `
+    <tr>
+      <td><span class="plate">${esc(o.plate)}</span>${counts[o.plate] > 1 ? `<div class="repeat">Repeat offender ×${counts[o.plate]}</div>` : ''}</td>
+      <td>${esc(o.location)}</td>
+      <td>${esc(new Date(o.when).toLocaleString())}</td>
+      <td>${o.fine ? esc(Number(o.fine).toFixed(2)) : '—'}</td>
+      <td>${esc(o.notes)}</td>
+      <td><button class="del" data-id="${o.id}" title="Delete">✕</button></td>
+    </tr>`).join('') : `<tr><td colspan="6" class="empty">No offences logged yet.</td></tr>`;
+
+  const repeat = Object.values(counts).filter(n => n > 1).length;
+  const fines = offences.reduce((sum, o) => sum + (Number(o.fine) || 0), 0);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  document.getElementById('stats').innerHTML = `
+    <div><b>${offences.length}</b><span>Total offences</span></div>
+    <div><b>${Object.keys(counts).length}</b><span>Unique vehicles</span></div>
+    <div><b>${repeat}</b><span>Repeat offenders</span></div>
+    <div><b>${fines.toFixed(2)}</b><span>Total fines</span></div>
+    <div><b>${top ? esc(top[0]) : '—'}</b><span>Most offences</span></div>`;
+}
+
+document.getElementById('form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  offences.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    plate: f.get('plate').trim().toUpperCase(),
+    location: f.get('location').trim(),
+    when: f.get('when'),
+    fine: f.get('fine'),
+    notes: f.get('notes').trim(),
+  });
+  save();
+  e.target.reset();
+  render();
+});
+
+document.getElementById('rows').addEventListener('click', e => {
+  const id = e.target.dataset.id;
+  if (!id) return;
+  offences = offences.filter(o => o.id !== id);
+  save();
+  render();
+});
+
+document.getElementById('search').addEventListener('input', render);
+
+document.getElementById('clear').addEventListener('click', () => {
+  if (offences.length && confirm('Delete all offences?')) { offences = []; save(); render(); }
+});
+
+document.getElementById('export').addEventListener('click', () => {
+  const cols = ['plate', 'location', 'when', 'fine', 'notes'];
+  const csv = [cols.join(','), ...offences.map(o => cols.map(c => `"${String(o[c] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'red-light-offences.csv';
+  a.click();
+});
+
+render();
+</script>
+</body>
+</html>
