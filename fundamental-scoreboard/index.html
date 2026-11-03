@@ -55,13 +55,13 @@
     <div class="row" style="justify-content:space-between">
       <div class="row">
         <label>Scoring month <input id="month" type="month" style="width:150px"></label>
-        <span class="muted">Enter last month's and this month's latest release for each currency.</span>
+        <span class="muted">Enter last month's and this month's latest release for each currency. Loaded with real releases as of 3 Nov 2026 (blank = not yet found). Seasonal is set to Neutral; set your own.</span>
       </div>
       <div class="row">
         <button class="btn" id="roll" title="Move 'This month' values into 'Last month' and clear This month">Roll to next month</button>
         <button class="btn" id="export">Export JSON</button>
         <label class="btn">Import JSON<input id="import" type="file" accept=".json" hidden></label>
-        <button class="btn" id="reset">Reset to sample</button>
+        <button class="btn" id="reset">Reload Nov 2026 data</button>
       </div>
     </div>
   </div>
@@ -120,21 +120,22 @@ const FACTORS = [
   {k:"cpi",   label:"Inflation (CPI y/y) %", dir:+1},
   {k:"unemp", label:"Unemployment %",  dir:-1},
 ];
-const KEY = "fx-fundamental-scoreboard-v1";
+const KEY = "fx-fundamental-scoreboard-v2";
 
-// Placeholder sample values so the app isn't empty — replace with real releases.
+// Real releases gathered 3 Nov 2026: [previous release, latest release]. Blank = not found yet.
+// Seasonal set to Neutral for all; set your own November tendency.
 function sample(){
   const d = {
-    USD:{rate:[4.00,3.75],gdp:[2.1,2.4],cpi:[2.9,3.0],unemp:[4.3,4.4],season:"0"},
-    EUR:{rate:[2.00,2.00],gdp:[0.1,0.2],cpi:[2.2,2.1],unemp:[6.3,6.3],season:"0"},
-    GBP:{rate:[4.00,4.00],gdp:[0.3,0.1],cpi:[3.8,3.6],unemp:[4.8,5.0],season:"-1"},
-    JPY:{rate:[0.50,0.75],gdp:[0.5,0.3],cpi:[2.7,3.0],unemp:[2.5,2.5],season:"1"},
-    AUD:{rate:[3.60,3.60],gdp:[0.6,0.7],cpi:[2.1,3.0],unemp:[4.3,4.5],season:"1"},
-    NZD:{rate:[3.00,2.50],gdp:[-0.9,0.3],cpi:[2.7,3.0],unemp:[5.2,5.3],season:"0"},
-    CAD:{rate:[2.50,2.25],gdp:[-0.4,0.2],cpi:[1.9,2.4],unemp:[7.1,6.9],season:"-1"},
-    CHF:{rate:[0.00,0.00],gdp:[0.1,-0.1],cpi:[0.2,0.1],unemp:[2.9,3.0],season:"0"},
+    USD:{rate:[4.00,4.00],gdp:[2.2,3.4],cpi:[3.4,3.7],unemp:[4.1,4.2],season:"0"},
+    EUR:{rate:[2.50,2.50],gdp:["",0.4],cpi:[3.2,3.8],unemp:[6.5,6.5],season:"0"},
+    GBP:{rate:[3.75,3.75],gdp:["",""],cpi:[3.1,3.5],unemp:[4.9,4.7],season:"0"},
+    JPY:{rate:[1.25,1.25],gdp:["",""],cpi:[1.9,2.1],unemp:[2.5,2.4],season:"0"},
+    AUD:{rate:[4.60,4.85],gdp:["",""],cpi:[4.0,4.3],unemp:[4.6,4.7],season:"0"},
+    NZD:{rate:[2.75,2.75],gdp:[0.9,0.2],cpi:[4.1,3.7],unemp:[5.4,5.6],season:"0"},
+    CAD:{rate:[2.25,2.50],gdp:["",""],cpi:[3.0,3.1],unemp:[6.4,6.5],season:"0"},
+    CHF:{rate:[0.00,0.00],gdp:["",""],cpi:[1.0,1.5],unemp:["",""],season:"0"},
   };
-  return {month:new Date().toISOString().slice(0,7), data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[]};
+  return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[]};
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || sample(); } catch { S = sample(); }
