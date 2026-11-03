@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX Fundamental Scoreboard</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#2ea043;--down:#f85149;--flat:#8b949e;--accent:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding:16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  h1{font-size:18px;margin:0} h2{font-size:15px;margin:0 0 10px}
+  nav button,.btn{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
+  nav button.on{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
+  main{padding:16px;max-width:1300px;margin:0 auto}
+  section{display:none} section.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px}
+  .wrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+  th{color:var(--mute);font-weight:600;font-size:12px}
+  td:first-child,th:first-child{text-align:left}
+  input,select{background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px;font:inherit;width:78px}
+  input[type=text]{width:130px} input[type=datetime-local]{width:190px}
+  .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.up{background:#2ea04322}.pill.down{background:#f8514922}.pill.flat{background:#8b949e22}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .muted{color:var(--mute);font-size:12px}
+  .bar{height:8px;border-radius:4px;background:var(--line);position:relative;min-width:120px}
+  .bar i{position:absolute;top:0;bottom:0;border-radius:4px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .x{background:none;border:none;color:var(--down);cursor:pointer;font-size:16px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>FX Fundamental Scoreboard</h1>
+    <div class="muted">Each currency is scored on this month's data vs last month's, then compared against every other currency.</div>
+  </div>
+  <nav class="row">
+    <button data-tab="data" class="on">1 · Data input</button>
+    <button data-tab="board">2 · Scoreboard</button>
+    <button data-tab="pairs">3 · Pair bias</button>
+    <button data-tab="ob">4 · Release OBs</button>
+  </nav>
+</header>
+
+<main>
+<!-- DATA -->
+<section id="data" class="on">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <label>Scoring month <input id="month" type="month" style="width:150px"></label>
+        <span class="muted">Enter last month's and this month's latest release for each currency.</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="roll" title="Move 'This month' values into 'Last month' and clear This month">Roll to next month</button>
+        <button class="btn" id="export">Export JSON</button>
+        <label class="btn">Import JSON<input id="import" type="file" accept=".json" hidden></label>
+        <button class="btn" id="reset">Reset to sample</button>
+      </div>
+    </div>
+  </div>
+  <div class="card wrap"><table id="dataTable"></table></div>
+  <div class="card">
+    <h2>Scoring rules &amp; weights</h2>
+    <div class="row" id="weights"></div>
+    <p class="muted" style="margin-bottom:0">
+      Each factor gives <b>+1</b> (improved, currency-positive), <b>0</b> (unchanged) or <b>−1</b> (worse), multiplied by its weight.<br>
+      Interest rate ↑ = +1 · GDP growth ↑ = +1 · Inflation ↑ = +1 (hawkish pressure; flip below if you prefer) · Unemployment ↓ = +1 · Seasonal tendency for the month: Bullish +1 / Neutral 0 / Bearish −1.
+    </p>
+    <label class="row" style="margin-top:8px"><input type="checkbox" id="inflFlip" style="width:auto"> Treat higher inflation as <b>negative</b> for the currency</label>
+  </div>
+</section>
+
+<!-- SCOREBOARD -->
+<section id="board">
+  <div class="card wrap"><h2>Currency strength ranking</h2><table id="boardTable"></table></div>
+</section>
+
+<!-- PAIRS -->
+<section id="pairs">
+  <div class="grid2">
+    <div class="card wrap"><h2>Best opportunities (largest score gap)</h2><table id="topPairs"></table></div>
+    <div class="card wrap"><h2>Strength matrix (row − column)</h2><table id="matrix"></table></div>
+  </div>
+  <div class="card wrap"><h2>All pairs</h2><table id="pairTable"></table></div>
+</section>
+
+<!-- ORDER BLOCKS -->
+<section id="ob">
+  <div class="card">
+    <h2>Data-release candle order blocks</h2>
+    <p class="muted">Log the <b>1-hour candle of the data release</b> as the order block (its high/low). While price holds above it, it's an <b>OB</b> (support). Once price breaks and closes <b>below its low</b>, it becomes an <b>inverted OB (iOB)</b> — expected resistance on retest. Bias comes from the scoreboard.</p>
+    <div class="row">
+      <select id="obPair" style="width:110px"></select>
+      <input id="obEvent" type="text" placeholder="Event (e.g. US CPI)">
+      <input id="obTime" type="datetime-local">
+      <input id="obHigh" type="number" step="any" placeholder="Candle high">
+      <input id="obLow" type="number" step="any" placeholder="Candle low">
+      <input id="obPrice" type="number" step="any" placeholder="Current price">
+      <button class="btn primary" id="obAdd">Add OB</button>
+    </div>
+  </div>
+  <div class="card wrap"><table id="obTable"></table></div>
+</section>
+</main>
+
+<script>
+const CCY = ["USD","EUR","GBP","JPY","AUD","NZD","CAD","CHF"];
+// Market-convention base priority, used to build pair names like EURUSD, GBPJPY.
+const PRIORITY = ["EUR","GBP","AUD","NZD","USD","CAD","CHF","JPY"];
+const FACTORS = [
+  {k:"rate",  label:"Interest rate %", dir:+1},
+  {k:"gdp",   label:"GDP growth %",    dir:+1},
+  {k:"cpi",   label:"Inflation (CPI y/y) %", dir:+1},
+  {k:"unemp", label:"Unemployment %",  dir:-1},
+];
+const KEY = "fx-fundamental-scoreboard-v1";
+
+// Placeholder sample values so the app isn't empty — replace with real releases.
+function sample(){
+  const d = {
+    USD:{rate:[4.00,3.75],gdp:[2.1,2.4],cpi:[2.9,3.0],unemp:[4.3,4.4],season:"0"},
+    EUR:{rate:[2.00,2.00],gdp:[0.1,0.2],cpi:[2.2,2.1],unemp:[6.3,6.3],season:"0"},
+    GBP:{rate:[4.00,4.00],gdp:[0.3,0.1],cpi:[3.8,3.6],unemp:[4.8,5.0],season:"-1"},
+    JPY:{rate:[0.50,0.75],gdp:[0.5,0.3],cpi:[2.7,3.0],unemp:[2.5,2.5],season:"1"},
+    AUD:{rate:[3.60,3.60],gdp:[0.6,0.7],cpi:[2.1,3.0],unemp:[4.3,4.5],season:"1"},
+    NZD:{rate:[3.00,2.50],gdp:[-0.9,0.3],cpi:[2.7,3.0],unemp:[5.2,5.3],season:"0"},
+    CAD:{rate:[2.50,2.25],gdp:[-0.4,0.2],cpi:[1.9,2.4],unemp:[7.1,6.9],season:"-1"},
+    CHF:{rate:[0.00,0.00],gdp:[0.1,-0.1],cpi:[0.2,0.1],unemp:[2.9,3.0],season:"0"},
+  };
+  return {month:new Date().toISOString().slice(0,7), data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[]};
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || sample(); } catch { S = sample(); }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+
+const $ = id => document.getElementById(id);
+const sign = v => v>0?"up":v<0?"down":"flat";
+const fmt = v => (v>0?"+":"")+(+v.toFixed(2));
+const arrow = v => v>0?"▲":v<0?"▼":"■";
+
+// ---------- scoring ----------
+function factorScore(ccy, f){
+  const [prev, cur] = S.data[ccy][f.k];
+  if (prev===""||cur===""||prev==null||cur==null||isNaN(prev)||isNaN(cur)) return 0;
+  let dir = f.dir; if (f.k==="cpi" && S.inflFlip) dir = -1;
+  const ch = cur - prev;
+  return ch===0 ? 0 : Math.sign(ch)*dir;
+}
+function scores(){
+  const out = {};
+  for (const c of CCY){
+    const parts = {};
+    for (const f of FACTORS) parts[f.k] = factorScore(c,f)*(+S.weights[f.k]||0);
+    parts.season = (+S.data[c].season||0)*(+S.weights.season||0);
+    out[c] = {parts, total:Object.values(parts).reduce((a,b)=>a+b,0)};
+  }
+  return out;
+}
+const maxScore = () => FACTORS.reduce((a,f)=>a+Math.abs(+S.weights[f.k]||0),0)+Math.abs(+S.weights.season||0);
+function pairName(a,b){ return PRIORITY.indexOf(a)<PRIORITY.indexOf(b) ? [a,b] : [b,a]; }
+function allPairs(){
+  const ps=[]; for(let i=0;i<CCY.length;i++)for(let j=i+1;j<CCY.length;j++) ps.push(pairName(CCY[i],CCY[j]));
+  return ps;
+}
+function biasLabel(d){
+  if (d>=2) return ["Strong buy","up"]; if (d>0) return ["Buy","up"];
+  if (d<=-2) return ["Strong sell","down"]; if (d<0) return ["Sell","down"];
+  return ["Neutral","flat"];
+}
+function pairBias(base, quote, sc){ const d = sc[base].total - sc[quote].total; return {d, lab:biasLabel(d)}; }
+
+// ---------- render: data ----------
+function renderData(){
+  $("month").value = S.month;
+  let h = "<tr><th>Currency</th>";
+  for (const f of FACTORS) h += `<th colspan="3">${f.label}</th>`;
+  h += "<th>Seasonal (this month)</th></tr><tr><th></th>";
+  for (const f of FACTORS) h += "<th>Last</th><th>This</th><th>Δ</th>";
+  h += "<th></th></tr>";
+  for (const c of CCY){
+    h += `<tr><td><b>${c}</b></td>`;
+    for (const f of FACTORS){
+      const [p,n] = S.data[c][f.k]; const s = factorScore(c,f);
+      h += `<td><input type="number" step="any" data-c="${c}" data-k="${f.k}" data-i="0" value="${p??""}"></td>
+            <td><input type="number" step="any" data-c="${c}" data-k="${f.k}" data-i="1" value="${n??""}"></td>
+            <td class="${sign(s)}">${arrow(s)}</td>`;
+    }
+    const sv = S.data[c].season;
+    h += `<td><select data-c="${c}" data-season style="width:100px">
+      <option value="1" ${sv=="1"?"selected":""}>Bullish</option>
+      <option value="0" ${sv=="0"?"selected":""}>Neutral</option>
+      <option value="-1" ${sv=="-1"?"selected":""}>Bearish</option></select></td></tr>`;
+  }
+  $("dataTable").innerHTML = h;
+  $("weights").innerHTML = [...FACTORS,{k:"season",label:"Seasonal"}]
+    .map(f=>`<label>${f.label} <input type="number" step="0.5" min="0" data-w="${f.k}" value="${S.weights[f.k]}" style="width:60px"></label>`).join("");
+  $("inflFlip").checked = !!S.inflFlip;
+}
+
+// ---------- render: scoreboard ----------
+function renderBoard(sc){
+  const m = maxScore()||1;
+  const ranked = CCY.slice().sort((a,b)=>sc[b].total-sc[a].total);
+  let h = "<tr><th>#</th><th>Currency</th><th>Rate</th><th>GDP</th><th>Inflation</th><th>Employment</th><th>Seasonal</th><th>Total</th><th>Strength</th></tr>";
+  ranked.forEach((c,i)=>{
+    const p = sc[c].parts, t = sc[c].total;
+    const w = Math.min(50, Math.abs(t)/m*50);
+    const bar = `<div class="bar"><i style="left:${t>=0?50:50-w}%;width:${w}%;background:var(--${t>=0?"up":"down"})"></i><i style="left:50%;width:1px;background:var(--mute)"></i></div>`;
+    h += `<tr><td>${i+1}</td><td><b>${c}</b></td>` +
+      ["rate","gdp","cpi","unemp","season"].map(k=>`<td class="${sign(p[k])}">${fmt(p[k])}</td>`).join("") +
+      `<td><span class="pill ${sign(t)}">${fmt(t)}</span></td><td>${bar}</td></tr>`;
+  });
+  $("boardTable").innerHTML = h;
+}
+
+// ---------- render: pairs ----------
+function renderPairs(sc){
+  const rows = allPairs().map(([b,q])=>({b,q,...pairBias(b,q,sc)})).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d));
+  const line = r => `<tr><td><b>${r.b}${r.q}</b></td><td>${fmt(sc[r.b].total)}</td><td>${fmt(sc[r.q].total)}</td><td class="${sign(r.d)}">${fmt(r.d)}</td><td><span class="pill ${r.lab[1]}">${r.lab[0]}</span></td></tr>`;
+  const head = "<tr><th>Pair</th><th>Base</th><th>Quote</th><th>Gap</th><th>Bias</th></tr>";
+  $("topPairs").innerHTML = head + rows.filter(r=>r.d!==0).slice(0,8).map(line).join("") || head;
+  $("pairTable").innerHTML = head + rows.map(line).join("");
+  const ranked = CCY.slice().sort((a,b)=>sc[b].total-sc[a].total);
+  let m = "<tr><th></th>"+ranked.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  for (const r of ranked){
+    m += `<tr><td><b>${r}</b></td>` + ranked.map(c=>{
+      if (r===c) return "<td class='muted'>—</td>";
+      const d = sc[r].total-sc[c].total; return `<td class="${sign(d)}">${fmt(d)}</td>`;
+    }).join("") + "</tr>";
+  }
+  $("matrix").innerHTML = m;
+}
+
+// ---------- render: order blocks ----------
+function obStatus(o){
+  const p = +o.price, hi = +o.high, lo = +o.low;
+  if (o.price===""||isNaN(p)) return ["Enter price","flat","—"];
+  if (p < lo)  return ["Inverted OB (iOB)","down","Broke below — expect resistance on retest of "+lo];
+  if (p > hi)  return ["Bullish OB","up","Holding above — expect support on retest of "+hi];
+  return ["Inside OB","flat","Price testing the release candle range"];
+}
+function renderOB(sc){
+  $("obPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
+  let h = "<tr><th>Pair</th><th>Event</th><th>Release (H1 candle)</th><th>High</th><th>Low</th><th>Current price</th><th>Status</th><th>Fundamental bias</th><th>Confluence</th><th></th></tr>";
+  S.obs.forEach((o,i)=>{
+    const [st,cls,note] = obStatus(o);
+    const b = o.pair.slice(0,3), q = o.pair.slice(3);
+    const pb = pairBias(b,q,sc);
+    let conf = "—", cc = "flat";
+    if (cls==="down" && pb.d<0){ conf="✔ Sell iOB retest"; cc="down"; }
+    else if (cls==="up" && pb.d>0){ conf="✔ Buy OB retest"; cc="up"; }
+    else if (cls!=="flat" && pb.d!==0){ conf="✖ Conflicts with bias"; }
+    h += `<tr><td><b>${o.pair}</b></td><td>${o.event||""}</td><td>${(o.time||"").replace("T"," ")}</td>
+      <td>${o.high}</td><td>${o.low}</td>
+      <td><input type="number" step="any" data-ob="${i}" value="${o.price}" style="width:100px"></td>
+      <td title="${note}"><span class="pill ${cls}">${st}</span><div class="muted">${note}</div></td>
+      <td><span class="pill ${pb.lab[1]}">${pb.lab[0]} (${fmt(pb.d)})</span></td>
+      <td class="${cc}">${conf}</td><td><button class="x" data-del="${i}" title="Delete">×</button></td></tr>`;
+  });
+  if (!S.obs.length) h += `<tr><td colspan="10" class="muted">No order blocks yet. Add the H1 candle of a data release above.</td></tr>`;
+  $("obTable").innerHTML = h;
+}
+
+function renderAll(){ const sc = scores(); renderData(); renderBoard(sc); renderPairs(sc); renderOB(sc); }
+
+// ---------- events ----------
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button,section").forEach(e=>e.classList.remove("on"));
+  b.classList.add("on"); $(b.dataset.tab).classList.add("on");
+});
+$("dataTable").addEventListener("change", e=>{
+  const t = e.target, c = t.dataset.c;
+  if (t.dataset.season!==undefined) S.data[c].season = t.value;
+  else if (t.dataset.k) S.data[c][t.dataset.k][+t.dataset.i] = t.value===""?"":+t.value;
+  save(); renderAll();
+});
+$("weights").addEventListener("change", e=>{ S.weights[e.target.dataset.w] = +e.target.value; save(); renderAll(); });
+$("inflFlip").onchange = e=>{ S.inflFlip = e.target.checked; save(); renderAll(); };
+$("month").onchange = e=>{ S.month = e.target.value; save(); };
+$("roll").onclick = ()=>{
+  if (!confirm("Move this month's values into 'Last month' and clear this month?")) return;
+  for (const c of CCY) for (const f of FACTORS) S.data[c][f.k] = [S.data[c][f.k][1], ""];
+  const [y,m] = (S.month||new Date().toISOString().slice(0,7)).split("-").map(Number);
+  S.month = new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);
+  save(); renderAll();
+};
+$("reset").onclick = ()=>{ if(confirm("Replace everything with sample data?")){ S = sample(); save(); renderAll(); } };
+$("export").onclick = ()=>{
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));
+  a.download = `fx-scoreboard-${S.month}.json`; a.click();
+};
+$("import").onchange = async e=>{
+  try { S = JSON.parse(await e.target.files[0].text()); save(); renderAll(); } catch { alert("Invalid JSON file"); }
+};
+$("obAdd").onclick = ()=>{
+  const hi = $("obHigh").value, lo = $("obLow").value;
+  if (hi===""||lo===""||+hi < +lo) return alert("Enter the release candle high and low (high ≥ low).");
+  S.obs.push({pair:$("obPair").value, event:$("obEvent").value, time:$("obTime").value, high:+hi, low:+lo, price:$("obPrice").value===""?"":+$("obPrice").value});
+  ["obEvent","obTime","obHigh","obLow","obPrice"].forEach(id=>$(id).value="");
+  save(); renderAll();
+};
+$("obTable").addEventListener("change", e=>{ const i=e.target.dataset.ob; if(i!==undefined){ S.obs[i].price = e.target.value===""?"":+e.target.value; save(); renderAll(); }});
+$("obTable").addEventListener("click", e=>{ const i=e.target.dataset.del; if(i!==undefined){ S.obs.splice(+i,1); save(); renderAll(); }});
+
+renderAll();
+</script>
+</body>
+</html>
