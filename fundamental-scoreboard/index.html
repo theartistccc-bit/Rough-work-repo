@@ -120,7 +120,7 @@ const FACTORS = [
   {k:"cpi",   label:"Inflation (CPI y/y) %", dir:+1},
   {k:"unemp", label:"Unemployment %",  dir:-1},
 ];
-const KEY = "fx-fundamental-scoreboard-v5";
+const KEY = "fx-fundamental-scoreboard-v6";
 
 // Real releases gathered 3 Nov 2026: [previous release, latest release]. Blank = not found yet.
 // November seasonal: USD bullish; JPY, NZD, CAD bearish; others neutral (weak/conflicting history).
@@ -135,7 +135,13 @@ function sample(){
     CAD:{rate:[2.25,2.50],gdp:[0.3,3.3],cpi:[3.0,3.1],unemp:[6.4,6.5],season:"-1"},
     CHF:{rate:[0.00,0.00],gdp:[0.5,1.5],cpi:[1.0,1.5],unemp:[3.1,3.1],season:"0"},
   };
-  return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[]};
+  return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[
+    {pair:"AUDUSD", event:"RBA rate decision (hiked to 4.85%)", time:"2026-11-03T03:30", high:"", low:"", price:""},
+    {pair:"NZDUSD", event:"NZ Q3 employment / unemployment", time:"2026-11-03T21:45", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"Eurozone Oct flash CPI", time:"2026-11-04T10:00", high:"", low:"", price:""},
+    {pair:"GBPUSD", event:"BoE rate decision", time:"2026-11-05T12:00", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"US Oct jobs report (NFP)", time:"2026-11-06T13:30", high:"", low:"", price:""},
+  ]};
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || sample(); } catch { S = sample(); }
@@ -242,6 +248,7 @@ function renderPairs(sc){
 // ---------- render: order blocks ----------
 function obStatus(o){
   const p = +o.price, hi = +o.high, lo = +o.low;
+  if (o.high===""||o.low===""||o.high==null||o.low==null) return ["Waiting for candle","flat","Enter the H1 candle high/low once it closes"];
   if (o.price===""||isNaN(p)) return ["Enter price","flat","—"];
   if (p < lo)  return ["Inverted OB (iOB)","down","Broke below — expect resistance on retest of "+lo];
   if (p > hi)  return ["Bullish OB","up","Holding above — expect support on retest of "+hi];
@@ -249,7 +256,7 @@ function obStatus(o){
 }
 function renderOB(sc){
   $("obPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
-  let h = "<tr><th>Pair</th><th>Event</th><th>Release (H1 candle)</th><th>High</th><th>Low</th><th>Current price</th><th>Status</th><th>Fundamental bias</th><th>Confluence</th><th></th></tr>";
+  let h = "<tr><th>Pair</th><th>Event</th><th>Release (H1 candle, UTC)</th><th>High</th><th>Low</th><th>Current price</th><th>Status</th><th>Fundamental bias</th><th>Confluence</th><th></th></tr>";
   S.obs.forEach((o,i)=>{
     const [st,cls,note] = obStatus(o);
     const b = o.pair.slice(0,3), q = o.pair.slice(3);
@@ -259,8 +266,9 @@ function renderOB(sc){
     else if (cls==="up" && pb.d>0){ conf="✔ Buy OB retest"; cc="up"; }
     else if (cls!=="flat" && pb.d!==0){ conf="✖ Conflicts with bias"; }
     h += `<tr><td><b>${o.pair}</b></td><td>${o.event||""}</td><td>${(o.time||"").replace("T"," ")}</td>
-      <td>${o.high}</td><td>${o.low}</td>
-      <td><input type="number" step="any" data-ob="${i}" value="${o.price}" style="width:100px"></td>
+      <td><input type="number" step="any" data-ob="${i}" data-f="high" value="${o.high}" style="width:90px"></td>
+      <td><input type="number" step="any" data-ob="${i}" data-f="low" value="${o.low}" style="width:90px"></td>
+      <td><input type="number" step="any" data-ob="${i}" data-f="price" value="${o.price}" style="width:100px"></td>
       <td title="${note}"><span class="pill ${cls}">${st}</span><div class="muted">${note}</div></td>
       <td><span class="pill ${pb.lab[1]}">${pb.lab[0]} (${fmt(pb.d)})</span></td>
       <td class="${cc}">${conf}</td><td><button class="x" data-del="${i}" title="Delete">×</button></td></tr>`;
@@ -280,9 +288,9 @@ $("dataTable").addEventListener("change", e=>{
   const t = e.target, c = t.dataset.c;
   if (t.dataset.season!==undefined) S.data[c].season = t.value;
   else if (t.dataset.k) S.data[c][t.dataset.k][+t.dataset.i] = t.value===""?"":+t.value;
-  save(); renderAll();
+  save(); setTimeout(renderAll);
 });
-$("weights").addEventListener("change", e=>{ S.weights[e.target.dataset.w] = +e.target.value; save(); renderAll(); });
+$("weights").addEventListener("change", e=>{ S.weights[e.target.dataset.w] = +e.target.value; save(); setTimeout(renderAll); });
 $("inflFlip").onchange = e=>{ S.inflFlip = e.target.checked; save(); renderAll(); };
 $("month").onchange = e=>{ S.month = e.target.value; save(); };
 $("roll").onclick = ()=>{
@@ -308,7 +316,7 @@ $("obAdd").onclick = ()=>{
   ["obEvent","obTime","obHigh","obLow","obPrice"].forEach(id=>$(id).value="");
   save(); renderAll();
 };
-$("obTable").addEventListener("change", e=>{ const i=e.target.dataset.ob; if(i!==undefined){ S.obs[i].price = e.target.value===""?"":+e.target.value; save(); renderAll(); }});
+$("obTable").addEventListener("change", e=>{ const i=e.target.dataset.ob; if(i!==undefined){ S.obs[i][e.target.dataset.f||"price"] = e.target.value===""?"":+e.target.value; save(); setTimeout(renderAll); }});
 $("obTable").addEventListener("click", e=>{ const i=e.target.dataset.del; if(i!==undefined){ S.obs.splice(+i,1); save(); renderAll(); }});
 
 renderAll();
