@@ -120,7 +120,7 @@ const FACTORS = [
   {k:"cpi",   label:"Inflation (CPI y/y) %", dir:+1},
   {k:"unemp", label:"Unemployment %",  dir:-1},
 ];
-const KEY = "fx-fundamental-scoreboard-v3";
+const KEY = "fx-fundamental-scoreboard-v4";
 
 // Real releases gathered 3 Nov 2026: [previous release, latest release]. Blank = not found yet.
 // Seasonal set to Neutral for all; set your own November tendency.
@@ -133,7 +133,7 @@ function sample(){
     AUD:{rate:[4.60,4.85],gdp:[0.3,0.4],cpi:[4.0,4.3],unemp:[4.6,4.7],season:"0"},
     NZD:{rate:[2.75,2.75],gdp:[0.9,0.2],cpi:[4.1,3.7],unemp:[5.4,5.6],season:"0"},
     CAD:{rate:[2.25,2.50],gdp:[0.3,3.3],cpi:[3.0,3.1],unemp:[6.4,6.5],season:"0"},
-    CHF:{rate:[0.00,0.00],gdp:[0.5,1.5],cpi:[1.0,1.5],unemp:["",""],season:"0"},
+    CHF:{rate:[0.00,0.00],gdp:[0.5,1.5],cpi:[1.0,1.5],unemp:[3.1,3.1],season:"0"},
   };
   return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[]};
 }
