@@ -2,18 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FX Fundamental Scoreboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <style>
-  :root{--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#2ea043;--down:#f85149;--flat:#8b949e;--accent:#58a6ff}
+  /* Layout: tabbed trading desk — inputs, ranking, pair bias, release OBs */
+  :root{--bg:#f4f6f9;--panel:#ffffff;--line:#d5dbe4;--text:#141a22;--mute:#5d6878;--up:#1a7f37;--down:#cf222e;--flat:#6e7781;--accent:#0b62c4;--on-accent:#ffffff;--input:#f8fafc;--up-bg:#1a7f3718;--down-bg:#cf222e18;--flat-bg:#6e778118;--z-rate:#8250df;--z-cpi:#bc4c00;--z-gdp:#0969da;--z-unemp:#1a7f37;--z-other:#6e7781}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#3fb950;--down:#f85149;--flat:#8b949e;--accent:#58a6ff;--on-accent:#06101c;--input:#0b0f14;--up-bg:#3fb95022;--down-bg:#f8514922;--flat-bg:#8b949e22;--z-rate:#a371f7;--z-cpi:#f0883e;--z-gdp:#58a6ff;--z-unemp:#3fb950;--z-other:#8b949e;color-scheme:dark}}
+  :root[data-theme="dark"]{--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#3fb950;--down:#f85149;--flat:#8b949e;--accent:#58a6ff;--on-accent:#06101c;--input:#0b0f14;--up-bg:#3fb95022;--down-bg:#f8514922;--flat-bg:#8b949e22;--z-rate:#a371f7;--z-cpi:#f0883e;--z-gdp:#58a6ff;--z-unemp:#3fb950;--z-other:#8b949e;color-scheme:dark}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  header{padding:16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  body{margin:0;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding-block:16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
   h1{font-size:18px;margin:0} h2{font-size:15px;margin:0 0 10px}
   nav button,.btn{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
   nav button.on{border-color:var(--accent);color:var(--accent)}
-  .btn.primary{background:var(--accent);color:#000;border-color:var(--accent)}
-  main{padding:16px;max-width:1300px;margin:0 auto}
+  .btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  main{padding-block:16px;max-width:1300px;margin:0 auto}
   section{display:none} section.on{display:block}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px}
   .wrap{overflow-x:auto}
@@ -21,20 +25,33 @@
   th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
   th{color:var(--mute);font-weight:600;font-size:12px}
   td:first-child,th:first-child{text-align:left}
-  input,select{background:#0b0f14;color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px;font:inherit;width:78px}
+  input,select{background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px;font:inherit;width:78px}
   input[type=text]{width:130px} input[type=datetime-local]{width:190px}
   .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat)}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-  .pill.up{background:#2ea04322}.pill.down{background:#f8514922}.pill.flat{background:#8b949e22}
+  .pill.up{background:var(--up-bg)}.pill.down{background:var(--down-bg)}.pill.flat{background:var(--flat-bg)}
+  .btn:focus-visible,nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.armed{border-color:var(--down);color:var(--down)}
+  #msg{color:var(--accent);font-size:12px}
   .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .muted{color:var(--mute);font-size:12px}
   .bar{height:8px;border-radius:4px;background:var(--line);position:relative;min-width:120px}
   .bar i{position:absolute;top:0;bottom:0;border-radius:4px}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .ftag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:12px;font-weight:600;color:var(--text);border-left:3px solid}
+  .f-rate{border-color:var(--z-rate)}.f-cpi{border-color:var(--z-cpi)}.f-gdp{border-color:var(--z-gdp)}.f-unemp{border-color:var(--z-unemp)}.f-other{border-color:var(--z-other)}
+  .plan{margin:0;padding-left:18px;display:grid;gap:6px}
+  #zoneMap svg{width:100%;height:auto;display:block}
+  #zoneMap .grid{stroke:var(--line);stroke-width:1}
+  #zoneMap .axis{fill:var(--mute);font-size:11px;font-variant-numeric:tabular-nums}
+  #zoneMap .zone{fill-opacity:.22}#zoneMap .zedge{stroke-width:3}
+  #zoneMap .zlab{fill:var(--text);font-size:11px}
+  #zoneMap .price{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:5 4}
+  #zoneMap .ptxt{fill:var(--accent);font-size:11px;font-weight:700}
+  .z-rate{fill:var(--z-rate);stroke:var(--z-rate)}.z-cpi{fill:var(--z-cpi);stroke:var(--z-cpi)}.z-gdp{fill:var(--z-gdp);stroke:var(--z-gdp)}.z-unemp{fill:var(--z-unemp);stroke:var(--z-unemp)}.z-other{fill:var(--z-other);stroke:var(--z-other)}
+  td{font-variant-numeric:tabular-nums}
   .x{background:none;border:none;color:var(--down);cursor:pointer;font-size:16px}
 </style>
-</head>
-<body>
 <header>
   <div>
     <h1>FX Fundamental Scoreboard</h1>
@@ -44,7 +61,7 @@
     <button data-tab="data" class="on">1 · Data input</button>
     <button data-tab="board">2 · Scoreboard</button>
     <button data-tab="pairs">3 · Pair bias</button>
-    <button data-tab="ob">4 · Release OBs</button>
+    <button data-tab="ob">4 · Release zones</button>
   </nav>
 </header>
 
@@ -59,9 +76,10 @@
       </div>
       <div class="row">
         <button class="btn" id="roll" title="Move 'This month' values into 'Last month' and clear This month">Roll to next month</button>
-        <button class="btn" id="export">Export JSON</button>
+        <button class="btn" id="export">Copy JSON backup</button>
         <label class="btn">Import JSON<input id="import" type="file" accept=".json" hidden></label>
         <button class="btn" id="reset">Reload Nov 2026 data</button>
+        <span id="msg" role="status"></span>
       </div>
     </div>
   </div>
@@ -91,22 +109,29 @@
   <div class="card wrap"><h2>All pairs</h2><table id="pairTable"></table></div>
 </section>
 
-<!-- ORDER BLOCKS -->
+<!-- RELEASE ZONES -->
 <section id="ob">
   <div class="card">
-    <h2>Data-release candle order blocks</h2>
-    <p class="muted">Log the <b>1-hour candle of the data release</b> as the order block (its high/low). While price holds above it, it's an <b>OB</b> (support). Once price breaks and closes <b>below its low</b>, it becomes an <b>inverted OB (iOB)</b> — expected resistance on retest. Bias comes from the scoreboard.</p>
+    <h2>Release zones</h2>
+    <p class="muted">Mark the <b>1-hour candle of each data release</b> (rate decision, CPI, GDP, jobs…) and extend its high–low range into the future as a <b>zone</b>. Price above a zone → it acts as <b>support</b>; price below → <b>resistance</b>. A zone is a potential entry only when the scoreboard bias for that pair agrees: buy at support when the bias is bullish, sell at resistance when it is bearish.</p>
     <div class="row">
       <select id="obPair" style="width:110px"></select>
+      <select id="obFactor" style="width:130px">
+        <option value="rate">Interest rate</option><option value="cpi">Inflation</option>
+        <option value="gdp">GDP</option><option value="unemp">Employment</option><option value="other">Other</option>
+      </select>
       <input id="obEvent" type="text" placeholder="Event (e.g. US CPI)">
-      <input id="obTime" type="datetime-local">
+      <input id="obTime" type="datetime-local" title="Release time (UTC)">
       <input id="obHigh" type="number" step="any" placeholder="Candle high">
       <input id="obLow" type="number" step="any" placeholder="Candle low">
       <input id="obPrice" type="number" step="any" placeholder="Current price">
-      <button class="btn primary" id="obAdd">Add OB</button>
+      <button class="btn primary" id="obAdd">Add zone</button>
+      <span id="obMsg" class="down" style="font-size:12px"></span>
     </div>
   </div>
-  <div class="card wrap"><table id="obTable"></table></div>
+  <div class="card"><h2>Entry plan</h2><div id="plan"></div></div>
+  <div class="card wrap"><h2>All zones</h2><table id="obTable"></table></div>
+  <div class="card"><h2>Zone map</h2><p class="muted" style="margin-top:0">Each band starts at its release candle and extends to the right. The dashed line is the current price you entered.</p><div id="zoneMap" class="grid2"></div></div>
 </section>
 </main>
 
@@ -136,15 +161,18 @@ function sample(){
     CHF:{rate:[0.00,0.00],gdp:[0.5,1.5],cpi:[1.0,1.5],unemp:[3.1,3.1],season:"0"},
   };
   return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[
-    {pair:"AUDUSD", event:"RBA rate decision (hiked to 4.85%)", time:"2026-11-03T03:30", high:"", low:"", price:""},
-    {pair:"NZDUSD", event:"NZ Q3 employment / unemployment", time:"2026-11-03T21:45", high:"", low:"", price:""},
-    {pair:"EURUSD", event:"Eurozone Oct flash CPI", time:"2026-11-04T10:00", high:"", low:"", price:""},
-    {pair:"GBPUSD", event:"BoE rate decision", time:"2026-11-05T12:00", high:"", low:"", price:""},
-    {pair:"EURUSD", event:"US Oct jobs report (NFP)", time:"2026-11-06T13:30", high:"", low:"", price:""},
-  ]};
+    {pair:"AUDUSD", event:"RBA rate decision (hiked to 4.85%)", time:"2026-11-03T03:30", factor:"rate", high:"", low:"", price:""},
+    {pair:"NZDUSD", event:"NZ Q3 employment / unemployment", time:"2026-11-03T21:45", factor:"unemp", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"Eurozone Oct flash CPI", time:"2026-11-04T10:00", factor:"cpi", high:"", low:"", price:""},
+    {pair:"GBPUSD", event:"BoE rate decision", time:"2026-11-05T12:00", factor:"rate", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"US Oct jobs report (NFP)", time:"2026-11-06T13:30", factor:"unemp", high:"", low:"", price:""},
+  ], prices:{}};
 }
 let S;
 try { S = JSON.parse(localStorage.getItem(KEY)) || sample(); } catch { S = sample(); }
+S.prices ||= {};
+const guessFactor = ev => /rate|rba|boe|fed|fomc|ecb|boj|boc|snb|rbnz/i.test(ev) ? "rate" : /cpi|inflation|pce/i.test(ev) ? "cpi" : /gdp/i.test(ev) ? "gdp" : /job|employ|payroll|nfp/i.test(ev) ? "unemp" : "other";
+for (const o of S.obs){ o.factor ||= guessFactor(o.event||""); if (o.price!==""&&o.price!=null&&S.prices[o.pair]==null) S.prices[o.pair]=o.price; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
 
 const $ = id => document.getElementById(id);
@@ -245,36 +273,83 @@ function renderPairs(sc){
   $("matrix").innerHTML = m;
 }
 
-// ---------- render: order blocks ----------
-function obStatus(o){
-  const p = +o.price, hi = +o.high, lo = +o.low;
-  if (o.high===""||o.low===""||o.high==null||o.low==null) return ["Waiting for candle","flat","Enter the H1 candle high/low once it closes"];
-  if (o.price===""||isNaN(p)) return ["Enter price","flat","—"];
-  if (p < lo)  return ["Inverted OB (iOB)","down","Broke below — expect resistance on retest of "+lo];
-  if (p > hi)  return ["Bullish OB","up","Holding above — expect support on retest of "+hi];
-  return ["Inside OB","flat","Price testing the release candle range"];
+// ---------- render: release zones ----------
+const FACTOR_LABEL = {rate:"Interest rate", cpi:"Inflation", gdp:"GDP", unemp:"Employment", other:"Other"};
+const pipSize = pair => pair.includes("JPY") ? 0.01 : 0.0001;
+const priceOf = pair => { const v = S.prices[pair]; return (v===""||v==null||isNaN(v)) ? null : +v; };
+const hasRange = o => o.high!==""&&o.low!==""&&o.high!=null&&o.low!=null&&!isNaN(o.high)&&!isNaN(o.low);
+function zoneInfo(o, sc){
+  const b = o.pair.slice(0,3), q = o.pair.slice(3), pb = pairBias(b,q,sc), p = priceOf(o.pair);
+  const fGap = o.factor && o.factor!=="other" ? sc[b].parts[o.factor]-sc[q].parts[o.factor] : null;
+  const z = {pb, fGap, role:"pending", roleLab:"Waiting for candle", roleCls:"flat", sig:"Enter the candle high/low after it closes", sigCls:"flat", rank:9, dist:null};
+  if (!hasRange(o)) return z;
+  if (p===null){ Object.assign(z,{roleLab:"Enter price", sig:"Enter the current price for "+o.pair}); return z; }
+  const hi=+o.high, lo=+o.low, pip=pipSize(o.pair);
+  if (p>hi){ z.role="support"; z.roleLab="Support"; z.roleCls="up"; z.dist=(p-hi)/pip; }
+  else if (p<lo){ z.role="resistance"; z.roleLab="Resistance"; z.roleCls="down"; z.dist=(lo-p)/pip; }
+  else { z.role="inside"; z.roleLab="Price in zone"; z.dist=0; }
+  const d = pb.d, dist = z.dist.toFixed(1)+" pips";
+  if (d===0){ z.sig="No fundamental bias — skip"; z.rank=8; }
+  else if (z.role==="inside"){ z.sig=(d>0?"▶ BUY entry — price is in the zone":"▶ SELL entry — price is in the zone"); z.sigCls=d>0?"up":"down"; z.rank=0; }
+  else if (z.role==="support" && d>0){ z.sig="Buy on retest — "+dist+" above zone"; z.sigCls="up"; z.rank=1; }
+  else if (z.role==="resistance" && d<0){ z.sig="Sell on retest — "+dist+" below zone"; z.sigCls="down"; z.rank=1; }
+  else { z.sig="Skip — zone works against the "+(d>0?"bullish":"bearish")+" bias"; z.rank=7; }
+  return z;
 }
 function renderOB(sc){
+  const sel = $("obPair").value;
   $("obPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
-  let h = "<tr><th>Pair</th><th>Event</th><th>Release (H1 candle, UTC)</th><th>High</th><th>Low</th><th>Current price</th><th>Status</th><th>Fundamental bias</th><th>Confluence</th><th></th></tr>";
-  S.obs.forEach((o,i)=>{
-    const [st,cls,note] = obStatus(o);
-    const b = o.pair.slice(0,3), q = o.pair.slice(3);
-    const pb = pairBias(b,q,sc);
-    let conf = "—", cc = "flat";
-    if (cls==="down" && pb.d<0){ conf="✔ Sell iOB retest"; cc="down"; }
-    else if (cls==="up" && pb.d>0){ conf="✔ Buy OB retest"; cc="up"; }
-    else if (cls!=="flat" && pb.d!==0){ conf="✖ Conflicts with bias"; }
-    h += `<tr><td><b>${o.pair}</b></td><td>${o.event||""}</td><td>${(o.time||"").replace("T"," ")}</td>
+  if (sel) $("obPair").value = sel;
+  const rows = S.obs.map((o,i)=>({o,i,z:zoneInfo(o,sc)}));
+  // table
+  let h = "<tr><th>Pair</th><th>Factor</th><th>Event</th><th>Release (UTC)</th><th>Zone high</th><th>Zone low</th><th>Current price</th><th>Zone role</th><th>Pair bias</th><th>Factor gap</th><th>Signal</th><th></th></tr>";
+  for (const {o,i,z} of rows){
+    h += `<tr><td><b>${o.pair}</b></td><td><span class="ftag f-${o.factor}">${FACTOR_LABEL[o.factor]||"Other"}</span></td>
+      <td>${o.event||""}</td><td>${(o.time||"").replace("T"," ")}</td>
       <td><input type="number" step="any" data-ob="${i}" data-f="high" value="${o.high}" style="width:90px"></td>
       <td><input type="number" step="any" data-ob="${i}" data-f="low" value="${o.low}" style="width:90px"></td>
-      <td><input type="number" step="any" data-ob="${i}" data-f="price" value="${o.price}" style="width:100px"></td>
-      <td title="${note}"><span class="pill ${cls}">${st}</span><div class="muted">${note}</div></td>
-      <td><span class="pill ${pb.lab[1]}">${pb.lab[0]} (${fmt(pb.d)})</span></td>
-      <td class="${cc}">${conf}</td><td><button class="x" data-del="${i}" title="Delete">×</button></td></tr>`;
-  });
-  if (!S.obs.length) h += `<tr><td colspan="10" class="muted">No order blocks yet. Add the H1 candle of a data release above.</td></tr>`;
+      <td><input type="number" step="any" data-pair="${o.pair}" value="${S.prices[o.pair]??""}" style="width:100px"></td>
+      <td><span class="pill ${z.roleCls}">${z.roleLab}</span></td>
+      <td><span class="pill ${z.pb.lab[1]}">${z.pb.lab[0]} (${fmt(z.pb.d)})</span></td>
+      <td class="${z.fGap===null?"flat":sign(z.fGap)}">${z.fGap===null?"—":fmt(z.fGap)}</td>
+      <td class="${z.sigCls}">${z.sig}</td><td><button class="x" data-del="${i}" title="Delete zone">×</button></td></tr>`;
+  }
+  if (!rows.length) h += `<tr><td colspan="12" class="muted">No zones yet. Add the 1-hour candle of a data release above.</td></tr>`;
   $("obTable").innerHTML = h;
+  // plan
+  const plan = rows.filter(r=>r.z.rank<=1).sort((a,b)=>a.z.rank-b.z.rank||a.z.dist-b.z.dist);
+  const pending = rows.filter(r=>r.z.role==="pending").length;
+  $("plan").innerHTML = plan.length
+    ? `<ul class="plan">${plan.map(({o,z})=>`<li><span class="pill ${z.sigCls}">${z.pb.d>0?"BUY":"SELL"} ${o.pair}</span> <b>${(+o.low)}–${(+o.high)}</b> · ${FACTOR_LABEL[o.factor]} zone (${o.event||"release"}) · <span class="${z.sigCls}">${z.sig}</span>${z.fGap!==null&&Math.sign(z.fGap)===Math.sign(z.pb.d)?' · <span class="muted">factor agrees ✔</span>':""}</li>`).join("")}</ul>`
+    : `<p class="muted" style="margin:0">No aligned zones yet.${pending?` ${pending} zone${pending>1?"s are":" is"} waiting for the candle high/low.`:""} A zone shows here once price sits on the side that matches the pair's bias.</p>`;
+  // map
+  const byPair = {};
+  rows.filter(r=>hasRange(r.o)).forEach(r=>(byPair[r.o.pair] ||= []).push(r));
+  $("zoneMap").innerHTML = Object.keys(byPair).length
+    ? Object.entries(byPair).map(([pair,rs])=>zoneSvg(pair,rs)).join("")
+    : `<p class="muted" style="margin:0">Zones appear here once they have a high and low.</p>`;
+}
+function zoneSvg(pair, rs){
+  const W=560,H=220,L=8,R=64,T=10,B=24, p=priceOf(pair);
+  const times = rs.map(r=>Date.parse(r.o.time+"Z")).filter(t=>!isNaN(t));
+  const t0 = (times.length?Math.min(...times):Date.now())-36e5*12, t1 = Math.max(Date.now(), ...times)+36e5*24;
+  let lo=Math.min(...rs.map(r=>+r.o.low)), hi=Math.max(...rs.map(r=>+r.o.high));
+  if (p!==null){ lo=Math.min(lo,p); hi=Math.max(hi,p); }
+  const pad=(hi-lo||pipSize(pair)*20)*0.15; lo-=pad; hi+=pad;
+  const x=t=>L+(W-L-R)*((t-t0)/((t1-t0)||1)), y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+  const dp = pair.includes("JPY")?3:5;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${pair} release zones">`;
+  for (let k=0;k<=4;k++){ const v=lo+(hi-lo)*k/4; s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${W-R+6}" y="${y(v)+4}" class="axis">${v.toFixed(dp)}</text>`; }
+  for (const {o} of rs){
+    const tx = isNaN(Date.parse(o.time+"Z"))?L:x(Date.parse(o.time+"Z"));
+    const y1=y(+o.high), y2=y(+o.low);
+    s+=`<rect x="${tx}" y="${y1}" width="${W-R-tx}" height="${Math.max(2,y2-y1)}" class="zone z-${o.factor}"><title>${FACTOR_LABEL[o.factor]}: ${o.event} ${o.low}–${o.high}</title></rect>`;
+    s+=`<line x1="${tx}" x2="${tx}" y1="${y1}" y2="${y2}" class="zedge z-${o.factor}"/>`;
+    s+=`<text x="${tx+4}" y="${y1-3}" class="zlab">${(o.event||FACTOR_LABEL[o.factor]).slice(0,28)}</text>`;
+  }
+  if (p!==null) s+=`<line x1="${L}" x2="${W-R}" y1="${y(p)}" y2="${y(p)}" class="price"/><text x="${W-R+6}" y="${y(p)+4}" class="ptxt">${p}</text>`;
+  s+=`<text x="${L}" y="${H-6}" class="axis">${new Date(t0).toISOString().slice(5,16).replace("T"," ")}</text><text x="${W-R}" y="${H-6}" class="axis" text-anchor="end">now →</text></svg>`;
+  return `<div style="min-width:0"><div class="row" style="justify-content:space-between"><b>${pair}</b><span class="muted">${rs.length} zone${rs.length>1?"s":""}</span></div>${s}</div>`;
 }
 
 function renderAll(){ const sc = scores(); renderData(); renderBoard(sc); renderPairs(sc); renderOB(sc); }
@@ -293,33 +368,41 @@ $("dataTable").addEventListener("change", e=>{
 $("weights").addEventListener("change", e=>{ S.weights[e.target.dataset.w] = +e.target.value; save(); setTimeout(renderAll); });
 $("inflFlip").onchange = e=>{ S.inflFlip = e.target.checked; save(); renderAll(); };
 $("month").onchange = e=>{ S.month = e.target.value; save(); };
-$("roll").onclick = ()=>{
-  if (!confirm("Move this month's values into 'Last month' and clear this month?")) return;
+function armed(btn, label){
+  if (btn.classList.contains("armed")) { btn.classList.remove("armed"); btn.textContent = btn.dataset.label; return true; }
+  btn.dataset.label = btn.textContent; btn.textContent = label; btn.classList.add("armed");
+  setTimeout(()=>{ if(btn.classList.contains("armed")){ btn.classList.remove("armed"); btn.textContent = btn.dataset.label; } }, 4000);
+  return false;
+}
+const note = t => { $("msg").textContent = t; setTimeout(()=>$("msg").textContent="", 4000); };
+$("roll").onclick = e=>{
+  if (!armed(e.currentTarget, "Click again to roll")) return;
   for (const c of CCY) for (const f of FACTORS) S.data[c][f.k] = [S.data[c][f.k][1], ""];
   const [y,m] = (S.month||new Date().toISOString().slice(0,7)).split("-").map(Number);
   S.month = new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);
-  save(); renderAll();
+  save(); renderAll(); note("Rolled to "+S.month);
 };
-$("reset").onclick = ()=>{ if(confirm("Replace everything with sample data?")){ S = sample(); save(); renderAll(); } };
+$("reset").onclick = e=>{ if(armed(e.currentTarget, "Click again to reset")){ S = sample(); save(); renderAll(); note("Sample data restored"); } };
 $("export").onclick = ()=>{
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:"application/json"}));
-  a.download = `fx-scoreboard-${S.month}.json`; a.click();
+  const txt = JSON.stringify(S,null,2);
+  navigator.clipboard.writeText(txt).then(()=>note("Copied. Paste into a .json file to keep a backup."))
+    .catch(()=>note("Copy was blocked by this view."));
 };
 $("import").onchange = async e=>{
-  try { S = JSON.parse(await e.target.files[0].text()); save(); renderAll(); } catch { alert("Invalid JSON file"); }
+  try { S = JSON.parse(await e.target.files[0].text()); save(); renderAll(); note("Imported"); } catch { note("That file is not a valid scoreboard backup."); }
 };
 $("obAdd").onclick = ()=>{
   const hi = $("obHigh").value, lo = $("obLow").value;
-  if (hi===""||lo===""||+hi < +lo) return alert("Enter the release candle high and low (high ≥ low).");
-  S.obs.push({pair:$("obPair").value, event:$("obEvent").value, time:$("obTime").value, high:+hi, low:+lo, price:$("obPrice").value===""?"":+$("obPrice").value});
-  ["obEvent","obTime","obHigh","obLow","obPrice"].forEach(id=>$(id).value="");
+  if (hi===""||lo===""||+hi < +lo) return $("obMsg").textContent = "Enter the release candle high and low (high must be ≥ low).";
+  S.obs.push({pair:$("obPair").value, factor:$("obFactor").value, event:$("obEvent").value, time:$("obTime").value, high:+hi, low:+lo});
+  if ($("obPrice").value!=="") S.prices[$("obPair").value] = +$("obPrice").value;
+  ["obEvent","obTime","obHigh","obLow","obPrice"].forEach(id=>$(id).value=""); $("obMsg").textContent="";
   save(); renderAll();
 };
-$("obTable").addEventListener("change", e=>{ const i=e.target.dataset.ob; if(i!==undefined){ S.obs[i][e.target.dataset.f||"price"] = e.target.value===""?"":+e.target.value; save(); setTimeout(renderAll); }});
+$("obTable").addEventListener("change", e=>{ const t=e.target, v=t.value===""?"":+t.value;
+  if (t.dataset.pair){ S.prices[t.dataset.pair]=v; save(); setTimeout(renderAll); return; }
+  const i=t.dataset.ob; if(i!==undefined){ S.obs[i][t.dataset.f] = v; save(); setTimeout(renderAll); }});
 $("obTable").addEventListener("click", e=>{ const i=e.target.dataset.del; if(i!==undefined){ S.obs.splice(+i,1); save(); renderAll(); }});
 
 renderAll();
 </script>
-</body>
-</html>
