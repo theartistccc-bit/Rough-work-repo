@@ -50,6 +50,27 @@
   #zoneMap .ptxt{fill:var(--accent);font-size:11px;font-weight:700}
   .z-rate{fill:var(--z-rate);stroke:var(--z-rate)}.z-cpi{fill:var(--z-cpi);stroke:var(--z-cpi)}.z-gdp{fill:var(--z-gdp);stroke:var(--z-gdp)}.z-unemp{fill:var(--z-unemp);stroke:var(--z-unemp)}.z-other{fill:var(--z-other);stroke:var(--z-other)}
   td{font-variant-numeric:tabular-nums}
+  .tog{display:inline-flex;gap:4px;align-items:center;font-size:13px}.tog input{width:auto}
+  .legend{margin:0;padding-left:18px;display:grid;gap:4px}
+  .live{color:var(--up);font-weight:700}
+  #chartBox svg{width:100%;min-width:640px;height:auto;display:block}
+  #chartBox .grid{stroke:var(--line);stroke-width:1}
+  #chartBox .axis{fill:var(--mute);font-size:11px;font-variant-numeric:tabular-nums}
+  #chartBox .cu{fill:var(--up);stroke:var(--up)}#chartBox .cd{fill:var(--down);stroke:var(--down)}
+  #chartBox .wick-u{stroke:var(--up)}#chartBox .wick-d{stroke:var(--down)}
+  #chartBox .zone{fill-opacity:.16}#chartBox .zedge{stroke-width:1;stroke-dasharray:3 3;fill:none}
+  #chartBox .zlab{font-size:11px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+  #chartBox .sw,#chartBox .boslab,#chartBox .chochlab{paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+  #chartBox .fvg-b{fill:var(--up);fill-opacity:.09;stroke:var(--up);stroke-opacity:.35}
+  #chartBox .fvg-s{fill:var(--down);fill-opacity:.09;stroke:var(--down);stroke-opacity:.35}
+  #chartBox .flab{font-size:10px;fill:var(--mute)}
+  #chartBox .sw{font-size:10px;font-weight:700;fill:var(--text)}
+  #chartBox .bos{stroke:var(--text);stroke-width:1;stroke-dasharray:4 3}
+  #chartBox .boslab{font-size:10px;font-weight:700;fill:var(--text)}
+  #chartBox .choch{stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4 3}
+  #chartBox .chochlab{font-size:10px;font-weight:700;fill:var(--accent)}
+  #chartBox .price{stroke:var(--accent);stroke-width:1;stroke-dasharray:2 3}
+  #chartBox .ptag{fill:var(--accent)}#chartBox .ptxt{fill:var(--on-accent);font-size:11px;font-weight:700}
   .x{background:none;border:none;color:var(--down);cursor:pointer;font-size:16px}
 </style>
 <header>
@@ -62,6 +83,7 @@
     <button data-tab="board">2 · Scoreboard</button>
     <button data-tab="pairs">3 · Pair bias</button>
     <button data-tab="ob">4 · Release zones</button>
+    <button data-tab="chart">5 · Live chart</button>
   </nav>
 </header>
 
@@ -132,6 +154,34 @@
   <div class="card"><h2>Entry plan</h2><div id="plan"></div></div>
   <div class="card wrap"><h2>All zones</h2><table id="obTable"></table></div>
   <div class="card"><h2>Zone map</h2><p class="muted" style="margin-top:0">Each band starts at its release candle and extends to the right. The dashed line is the current price you entered.</p><div id="zoneMap" class="grid2"></div></div>
+</section>
+<section id="chart">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <select id="chPair" style="width:110px" aria-label="Pair"></select>
+        <select id="chTf" style="width:80px" aria-label="Timeframe">
+          <option value="15m">15m</option><option value="1h" selected>1H</option><option value="4h">4H</option><option value="1d">1D</option>
+        </select>
+        <label class="tog"><input type="checkbox" id="lyZones" checked> Release zones</label>
+        <label class="tog"><input type="checkbox" id="lySwings" checked> Swings</label>
+        <label class="tog"><input type="checkbox" id="lyBos" checked> BOS / CHoCH</label>
+        <label class="tog"><input type="checkbox" id="lyFvg" checked> Fair value gaps</label>
+      </div>
+      <span id="liveStatus" class="muted"></span>
+    </div>
+  </div>
+  <div class="card"><div id="chartBox" class="wrap"></div><div id="chartNote" class="muted" style="margin-top:8px"></div></div>
+  <div class="card">
+    <h2>How to read the markups</h2>
+    <ul class="muted legend">
+      <li><b>Release zones</b> — the 1-hour candle of each data release, extended right. Filled automatically from live candles. Colour = factor (rate, inflation, GDP, employment).</li>
+      <li><b>Swings</b> — HH / HL / LH / LL mark confirmed swing highs and lows (3 candles each side).</li>
+      <li><b>BOS</b> — a close beyond the last swing in the direction of the trend. <b>CHoCH</b> — the first break against it (change of character).</li>
+      <li><b>FVG</b> — unfilled three-candle imbalances, extended until price fills them.</li>
+      <li>The headline signal uses the scoreboard: buy only at support when the pair bias is bullish, sell only at resistance when it is bearish.</li>
+    </ul>
+  </div>
 </section>
 </main>
 
@@ -352,7 +402,156 @@ function zoneSvg(pair, rs){
   return `<div style="min-width:0"><div class="row" style="justify-content:space-between"><b>${pair}</b><span class="muted">${rs.length} zone${rs.length>1?"s":""}</span></div>${s}</div>`;
 }
 
-function renderAll(){ const sc = scores(); renderData(); renderBoard(sc); renderPairs(sc); renderOB(sc); }
+function renderAll(){ const sc = scores(); renderData(); renderBoard(sc); renderPairs(sc); renderOB(sc); renderChart(); }
+
+// ---------- live prices (served by /api/candles on the hosted site) ----------
+const LIVE = { ok:null, cache:{}, source:"", at:null };
+async function getCandles(pair, tf){
+  const k = pair+"|"+tf, c = LIVE.cache[k];
+  if (c && Date.now()-c.at < 55e3) return c.data;
+  const r = await fetch(`api/candles?pair=${pair}&tf=${tf}`);
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  const j = await r.json();
+  if (!j.candles || !j.candles.length) throw new Error("no candles");
+  LIVE.source = j.source;
+  LIVE.cache[k] = {at:Date.now(), data:j.candles};
+  return j.candles;
+}
+async function refreshLive(){
+  const pairs = [...new Set([...S.obs.map(o=>o.pair), $("chPair").value || "EURUSD"])];
+  let any = false;
+  await Promise.all(pairs.map(async pair=>{
+    try {
+      const c = await getCandles(pair, "1h"); any = true;
+      S.prices[pair] = +c[c.length-1].c.toFixed(pair.includes("JPY")?3:5);
+      for (const o of S.obs) {
+        if (o.pair!==pair || !o.time || (hasRange(o) && !o.auto)) continue;
+        const rel = Date.parse(o.time+"Z")/1000, hour = Math.floor(rel/3600)*3600;
+        const k = c.find(x=>x.t===hour);
+        if (k){ const d=pair.includes("JPY")?3:5; o.high=+k.h.toFixed(d); o.low=+k.l.toFixed(d); o.auto=true; }
+      }
+    } catch {}
+  }));
+  LIVE.ok = any; LIVE.at = new Date();
+  if (any) save();
+  renderAll();
+}
+
+// ---------- price-action markups ----------
+function swings(c, k=3){
+  const out=[];
+  for (let i=k;i<c.length-k;i++){
+    let sh=true, sl=true;
+    for (let j=i-k;j<=i+k;j++){ if(j===i) continue; if(c[j].h>c[i].h || (j>i&&c[j].h===c[i].h)) sh=false; if(c[j].l<c[i].l || (j>i&&c[j].l===c[i].l)) sl=false; }
+    if (sh) out.push({i, type:"H", p:c[i].h});
+    if (sl) out.push({i, type:"L", p:c[i].l});
+  }
+  let lastH=null, lastL=null;
+  for (const s of out){
+    if (s.type==="H"){ s.lab = lastH===null?"SH":(s.p>lastH?"HH":"LH"); lastH=s.p; }
+    else { s.lab = lastL===null?"SL":(s.p>lastL?"HL":"LL"); lastL=s.p; }
+  }
+  return out;
+}
+function structure(c, sw, k=3){
+  const ev=[]; let trend=null, hs=null, ls=null, si=0;
+  const sorted=[...sw].sort((a,b)=>a.i-b.i);
+  for (let i=0;i<c.length;i++){
+    while (si<sorted.length && sorted[si].i+k<=i){ const s=sorted[si++]; if(s.type==="H") hs={...s,used:false}; else ls={...s,used:false}; }
+    if (hs && !hs.used && c[i].c>hs.p){ ev.push({from:hs.i,to:i,p:hs.p,dir:"up",lab:trend==="down"?"CHoCH":"BOS"}); trend="up"; hs.used=true; }
+    if (ls && !ls.used && c[i].c<ls.p){ ev.push({from:ls.i,to:i,p:ls.p,dir:"down",lab:trend==="up"?"CHoCH":"BOS"}); trend="down"; ls.used=true; }
+  }
+  return {events:ev, trend};
+}
+function fvgs(c){
+  const out=[];
+  for (let i=2;i<c.length;i++){
+    if (c[i].l>c[i-2].h) out.push({i:i-1, top:c[i].l, bot:c[i-2].h, dir:"bull"});
+    if (c[i].h<c[i-2].l) out.push({i:i-1, top:c[i-2].l, bot:c[i].h, dir:"bear"});
+  }
+  for (const g of out){
+    g.end=null;
+    for (let j=g.i+2;j<c.length;j++){
+      if ((g.dir==="bull" && c[j].l<=g.bot) || (g.dir==="bear" && c[j].h>=g.top)){ g.end=j; break; }
+    }
+  }
+  return out;
+}
+
+// ---------- chart ----------
+let chartReq = 0;
+async function renderChart(){
+  const box = $("chartBox"); if (!box) return;
+  const pair = $("chPair").value || "EURUSD", tf = $("chTf").value;
+  if (LIVE.ok===false){
+    box.innerHTML = `<p class="muted" style="margin:0">Live prices are not available in this view. Open the hosted site to see the live chart with markups.</p>`;
+    $("chartNote").textContent=""; return;
+  }
+  const my = ++chartReq;
+  let c;
+  try { c = await getCandles(pair, tf); } catch(e){ if(my===chartReq){ box.innerHTML=`<p class="muted" style="margin:0">Could not load ${pair} candles (${e.message}). Retrying on the next refresh.</p>`; } return; }
+  if (my!==chartReq) return;
+  box.innerHTML = drawChart(pair, tf, c);
+  $("liveStatus").innerHTML = `<span class="live">● Live</span> · ${LIVE.source==="twelvedata"?"Twelve Data":"Yahoo Finance"} · updated ${LIVE.at?LIVE.at.toISOString().slice(11,16):"—"} UTC`;
+}
+function drawChart(pair, tf, all){
+  const N = 140, c = all.slice(-N), off = all.length - c.length;
+  const sw = swings(all), st = structure(all, sw), fv = fvgs(all);
+  const W=1000, H=520, L=8, R=78, T=14, B=26, cw=(W-L-R)/c.length;
+  const zonesHere = $("lyZones").checked ? S.obs.filter(o=>o.pair===pair && hasRange(o)) : [];
+  let lo=Math.min(...c.map(k=>k.l)), hi=Math.max(...c.map(k=>k.h));
+  for (const o of zonesHere){ const span=hi-lo; if (+o.low>lo-span*.5 && +o.high<hi+span*.5){ lo=Math.min(lo,+o.low); hi=Math.max(hi,+o.high); } }
+  const pad=(hi-lo)*0.06; lo-=pad; hi+=pad;
+  const X=i=>L+(i-off)*cw+cw/2, Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo)), inView=i=>i>=off;
+  const dp = pair.includes("JPY")?3:5, sc=scores();
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${pair} ${tf} chart with markups">`;
+  for (let k=0;k<=6;k++){ const v=lo+(hi-lo)*k/6; s+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${W-R+6}" y="${Y(v)+4}">${v.toFixed(dp)}</text>`; }
+  const step=Math.ceil(c.length/7);
+  for (let i=0;i<c.length;i+=step){ const d=new Date(c[i].t*1000).toISOString(); s+=`<text class="axis" x="${X(i+off)}" y="${H-8}" text-anchor="middle">${tf==="1d"?d.slice(5,10):d.slice(5,10)+" "+d.slice(11,16)}</text>`; }
+  // release zones
+  for (const o of zonesHere){
+    const rel=Math.floor(Date.parse(o.time+"Z")/1000/3600)*3600;
+    let si=all.findIndex(k=>k.t+(tf==="1d"?86400:tf==="4h"?14400:0)>rel); if (si<0) continue; si=Math.max(si,off);
+    const x1=X(si)-cw/2, y1=Y(+o.high), y2=Y(+o.low), z=zoneInfo(o,sc);
+    s+=`<rect class="zone z-${o.factor}" x="${x1}" y="${y1}" width="${W-R-x1}" height="${Math.max(1.5,y2-y1)}"><title>${FACTOR_LABEL[o.factor]} zone · ${o.event} · ${o.low}–${o.high} · ${z.sig}</title></rect>`;
+    s+=`<rect class="zedge z-${o.factor}" x="${x1}" y="${y1}" width="${W-R-x1}" height="${Math.max(1.5,y2-y1)}" style="fill:none"/>`;
+    const nearEnd = x1 > W-R-300;
+    s+=`<text class="zlab" x="${nearEnd?x1-6:x1+4}" y="${y1-4}" text-anchor="${nearEnd?"end":"start"}" style="fill:var(--z-${o.factor})">${(o.event||"").slice(0,34)} · ${z.roleLab}</text>`;
+  }
+  // FVGs (unfilled, most recent 6)
+  if ($("lyFvg").checked){
+    for (const g of fv.filter(g=>g.end===null && g.i>=off).slice(-6)){
+      const x1=X(g.i)-cw/2;
+      s+=`<rect class="fvg-${g.dir==="bull"?"b":"s"}" x="${x1}" y="${Y(g.top)}" width="${W-R-x1}" height="${Math.max(1,Y(g.bot)-Y(g.top))}"><title>${g.dir==="bull"?"Bullish":"Bearish"} FVG ${g.bot.toFixed(dp)}–${g.top.toFixed(dp)}</title></rect><text class="flab" x="${W-R-4}" y="${Y(g.top)+10}" text-anchor="end">FVG</text>`;
+    }
+  }
+  // candles
+  for (let i=0;i<c.length;i++){
+    const k=c[i], up=k.c>=k.o, x=X(i+off), bw=Math.max(1,cw*0.62);
+    s+=`<line class="wick-${up?"u":"d"}" x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}"/><rect class="${up?"cu":"cd"}" x="${x-bw/2}" y="${Y(Math.max(k.o,k.c))}" width="${bw}" height="${Math.max(1,Math.abs(Y(k.o)-Y(k.c)))}"/>`;
+  }
+  // structure
+  if ($("lyBos").checked){
+    for (const e of st.events.filter(e=>inView(e.to)).slice(-8)){
+      const x1=X(Math.max(e.from,off)), x2=X(e.to), y=Y(e.p), cls=e.lab==="CHoCH"?"choch":"bos";
+      s+=`<line class="${cls}" x1="${x1}" x2="${x2}" y1="${y}" y2="${y}"/><text class="${cls}lab" x="${(x1+x2)/2}" y="${e.dir==="up"?y-4:y+12}" text-anchor="middle">${e.lab}</text>`;
+    }
+  }
+  // swings
+  if ($("lySwings").checked){
+    for (const w of sw.filter(w=>inView(w.i))){
+      s+=`<text class="sw" x="${X(w.i)}" y="${w.type==="H"?Y(w.p)-6:Y(w.p)+14}" text-anchor="middle">${w.lab}</text>`;
+    }
+  }
+  // price
+  const last=all[all.length-1].c, py=Y(last);
+  s+=`<line class="price" x1="${L}" x2="${W-R}" y1="${py}" y2="${py}"/><rect class="ptag" x="${W-R+2}" y="${py-9}" width="${R-4}" height="18" rx="3"/><text class="ptxt" x="${W-R+6}" y="${py+4}">${last.toFixed(dp)}</text></svg>`;
+  const b=pair.slice(0,3), q=pair.slice(3), pb=pairBias(b,q,sc);
+  const trendTxt = st.trend==="up"?"bullish (last break was up)":st.trend==="down"?"bearish (last break was down)":"undefined";
+  const agree = st.trend && pb.d!==0 && ((st.trend==="up")===(pb.d>0));
+  $("chartNote").innerHTML = `Structure on ${tf}: <b>${trendTxt}</b> · Fundamental bias: <span class="pill ${pb.lab[1]}">${pb.lab[0]} (${fmt(pb.d)})</span> · ${pb.d===0||!st.trend?"":agree?'<span class="up">Price structure agrees with fundamentals ✔</span>':'<span class="down">Price structure disagrees with fundamentals</span>'}`;
+  return s;
+}
 
 // ---------- events ----------
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
@@ -404,5 +603,10 @@ $("obTable").addEventListener("change", e=>{ const t=e.target, v=t.value===""?""
   const i=t.dataset.ob; if(i!==undefined){ S.obs[i][t.dataset.f] = v; save(); setTimeout(renderAll); }});
 $("obTable").addEventListener("click", e=>{ const i=e.target.dataset.del; if(i!==undefined){ S.obs.splice(+i,1); save(); renderAll(); }});
 
+$("chPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
+$("chPair").value = (S.obs[0]&&S.obs[0].pair) || "EURUSD";
+["chPair","chTf","lyZones","lySwings","lyBos","lyFvg"].forEach(id=>$(id).addEventListener("change",()=>{ if(id==="chPair") refreshLive(); else renderChart(); }));
 renderAll();
+refreshLive();
+setInterval(refreshLive, 60000);
 </script>
