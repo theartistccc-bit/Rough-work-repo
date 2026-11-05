@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FX Fundamental Scoreboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: tabbed trading desk — inputs, ranking, pair bias, release OBs */
+  :root{--bg:#f4f6f9;--panel:#ffffff;--line:#d5dbe4;--text:#141a22;--mute:#5d6878;--up:#1a7f37;--down:#cf222e;--flat:#6e7781;--accent:#0b62c4;--on-accent:#ffffff;--input:#f8fafc;--up-bg:#1a7f3718;--down-bg:#cf222e18;--flat-bg:#6e778118;--z-rate:#8250df;--z-cpi:#bc4c00;--z-gdp:#0969da;--z-unemp:#1a7f37;--z-other:#6e7781}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#3fb950;--down:#f85149;--flat:#8b949e;--accent:#58a6ff;--on-accent:#06101c;--input:#0b0f14;--up-bg:#3fb95022;--down-bg:#f8514922;--flat-bg:#8b949e22;--z-rate:#a371f7;--z-cpi:#f0883e;--z-gdp:#58a6ff;--z-unemp:#3fb950;--z-other:#8b949e;color-scheme:dark}}
+  :root[data-theme="dark"]{--bg:#0e1116;--panel:#161b22;--line:#2a313c;--text:#e6edf3;--mute:#8b949e;--up:#3fb950;--down:#f85149;--flat:#8b949e;--accent:#58a6ff;--on-accent:#06101c;--input:#0b0f14;--up-bg:#3fb95022;--down-bg:#f8514922;--flat-bg:#8b949e22;--z-rate:#a371f7;--z-cpi:#f0883e;--z-gdp:#58a6ff;--z-unemp:#3fb950;--z-other:#8b949e;color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  header{padding-block:16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+  h1{font-size:18px;margin:0} h2{font-size:15px;margin:0 0 10px}
+  nav button,.btn{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
+  nav button.on{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+  main{padding-block:16px;max-width:1300px;margin:0 auto}
+  section{display:none} section.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:16px}
+  .wrap{overflow-x:auto}
+  table{border-collapse:collapse;width:100%}
+  th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+  th{color:var(--mute);font-weight:600;font-size:12px}
+  td:first-child,th:first-child{text-align:left}
+  input,select{background:var(--input);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:4px 6px;font:inherit;width:78px}
+  input[type=text]{width:130px} input[type=datetime-local]{width:190px}
+  .up{color:var(--up);font-weight:700}.down{color:var(--down);font-weight:700}.flat{color:var(--flat)}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.up{background:var(--up-bg)}.pill.down{background:var(--down-bg)}.pill.flat{background:var(--flat-bg)}
+  .btn:focus-visible,nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.armed{border-color:var(--down);color:var(--down)}
+  #msg{color:var(--accent);font-size:12px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .muted{color:var(--mute);font-size:12px}
+  .bar{height:8px;border-radius:4px;background:var(--line);position:relative;min-width:120px}
+  .bar i{position:absolute;top:0;bottom:0;border-radius:4px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .ftag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:12px;font-weight:600;color:var(--text);border-left:3px solid}
+  .f-rate{border-color:var(--z-rate)}.f-cpi{border-color:var(--z-cpi)}.f-gdp{border-color:var(--z-gdp)}.f-unemp{border-color:var(--z-unemp)}.f-other{border-color:var(--z-other)}
+  .plan{margin:0;padding-left:18px;display:grid;gap:6px}
+  #zoneMap svg{width:100%;height:auto;display:block}
+  #zoneMap .grid{stroke:var(--line);stroke-width:1}
+  #zoneMap .axis{fill:var(--mute);font-size:11px;font-variant-numeric:tabular-nums}
+  #zoneMap .zone{fill-opacity:.22}#zoneMap .zedge{stroke-width:3}
+  #zoneMap .zlab{fill:var(--text);font-size:11px}
+  #zoneMap .price{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:5 4}
+  #zoneMap .ptxt{fill:var(--accent);font-size:11px;font-weight:700}
+  .z-rate{fill:var(--z-rate);stroke:var(--z-rate)}.z-cpi{fill:var(--z-cpi);stroke:var(--z-cpi)}.z-gdp{fill:var(--z-gdp);stroke:var(--z-gdp)}.z-unemp{fill:var(--z-unemp);stroke:var(--z-unemp)}.z-other{fill:var(--z-other);stroke:var(--z-other)}
+  td{font-variant-numeric:tabular-nums}
+  .tog{display:inline-flex;gap:4px;align-items:center;font-size:13px}.tog input{width:auto}
+  .legend{margin:0;padding-left:18px;display:grid;gap:4px}
+  .live{color:var(--up);font-weight:700}
+  #chartBox svg{width:100%;min-width:640px;height:auto;display:block}
+  #chartBox .grid{stroke:var(--line);stroke-width:1}
+  #chartBox .axis{fill:var(--mute);font-size:11px;font-variant-numeric:tabular-nums}
+  #chartBox .cu{fill:var(--up);stroke:var(--up)}#chartBox .cd{fill:var(--down);stroke:var(--down)}
+  #chartBox .wick-u{stroke:var(--up)}#chartBox .wick-d{stroke:var(--down)}
+  #chartBox .zone{fill-opacity:.16}#chartBox .zedge{stroke-width:1;stroke-dasharray:3 3;fill:none}
+  #chartBox .zlab{font-size:11px;font-weight:700;paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+  #chartBox .sw,#chartBox .boslab,#chartBox .chochlab{paint-order:stroke;stroke:var(--panel);stroke-width:3px}
+  #chartBox .fvg-b{fill:var(--up);fill-opacity:.09;stroke:var(--up);stroke-opacity:.35}
+  #chartBox .fvg-s{fill:var(--down);fill-opacity:.09;stroke:var(--down);stroke-opacity:.35}
+  #chartBox .flab{font-size:10px;fill:var(--mute)}
+  #chartBox .sw{font-size:10px;font-weight:700;fill:var(--text)}
+  #chartBox .bos{stroke:var(--text);stroke-width:1;stroke-dasharray:4 3}
+  #chartBox .boslab{font-size:10px;font-weight:700;fill:var(--text)}
+  #chartBox .choch{stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4 3}
+  #chartBox .chochlab{font-size:10px;font-weight:700;fill:var(--accent)}
+  #chartBox .price{stroke:var(--accent);stroke-width:1;stroke-dasharray:2 3}
+  #chartBox .ptag{fill:var(--accent)}#chartBox .ptxt{fill:var(--on-accent);font-size:11px;font-weight:700}
+  .x{background:none;border:none;color:var(--down);cursor:pointer;font-size:16px}
+</style>
+<header>
+  <div>
+    <h1>FX Fundamental Scoreboard</h1>
+    <div class="muted">Each currency is scored on this month's data vs last month's, then compared against every other currency.</div>
+  </div>
+  <nav class="row">
+    <button data-tab="data" class="on">1 · Data input</button>
+    <button data-tab="board">2 · Scoreboard</button>
+    <button data-tab="pairs">3 · Pair bias</button>
+    <button data-tab="ob">4 · Release zones</button>
+    <button data-tab="chart">5 · Live chart</button>
+  </nav>
+</header>
+
+<main>
+<!-- DATA -->
+<section id="data" class="on">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <label>Scoring month <input id="month" type="month" style="width:150px"></label>
+        <span class="muted">Enter last month's and this month's latest release for each currency. Loaded with real releases as of 3 Nov 2026 (blank = not yet found). November seasonal: USD bullish; JPY, NZD, CAD bearish; others neutral.</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="roll" title="Move 'This month' values into 'Last month' and clear This month">Roll to next month</button>
+        <button class="btn" id="export">Copy JSON backup</button>
+        <label class="btn">Import JSON<input id="import" type="file" accept=".json" hidden></label>
+        <button class="btn" id="reset">Reload Nov 2026 data</button>
+        <span id="msg" role="status"></span>
+      </div>
+    </div>
+  </div>
+  <div class="card wrap"><table id="dataTable"></table></div>
+  <div class="card">
+    <h2>Scoring rules &amp; weights</h2>
+    <div class="row" id="weights"></div>
+    <p class="muted" style="margin-bottom:0">
+      Each factor gives <b>+1</b> (improved, currency-positive), <b>0</b> (unchanged) or <b>−1</b> (worse), multiplied by its weight.<br>
+      Interest rate ↑ = +1 · GDP growth ↑ = +1 · Inflation ↑ = +1 (hawkish pressure; flip below if you prefer) · Unemployment ↓ = +1 · Seasonal tendency for the month: Bullish +1 / Neutral 0 / Bearish −1.
+    </p>
+    <label class="row" style="margin-top:8px"><input type="checkbox" id="inflFlip" style="width:auto"> Treat higher inflation as <b>negative</b> for the currency</label>
+  </div>
+</section>
+
+<!-- SCOREBOARD -->
+<section id="board">
+  <div class="card wrap"><h2>Currency strength ranking</h2><table id="boardTable"></table></div>
+</section>
+
+<!-- PAIRS -->
+<section id="pairs">
+  <div class="grid2">
+    <div class="card wrap"><h2>Best opportunities (largest score gap)</h2><table id="topPairs"></table></div>
+    <div class="card wrap"><h2>Strength matrix (row − column)</h2><table id="matrix"></table></div>
+  </div>
+  <div class="card wrap"><h2>All pairs</h2><table id="pairTable"></table></div>
+</section>
+
+<!-- RELEASE ZONES -->
+<section id="ob">
+  <div class="card">
+    <h2>Release zones</h2>
+    <p class="muted">Mark the <b>1-hour candle of each data release</b> (rate decision, CPI, GDP, jobs…) and extend its high–low range into the future as a <b>zone</b>. Price above a zone → it acts as <b>support</b>; price below → <b>resistance</b>. A zone is a potential entry only when the scoreboard bias for that pair agrees: buy at support when the bias is bullish, sell at resistance when it is bearish.</p>
+    <div class="row">
+      <select id="obPair" style="width:110px"></select>
+      <select id="obFactor" style="width:130px">
+        <option value="rate">Interest rate</option><option value="cpi">Inflation</option>
+        <option value="gdp">GDP</option><option value="unemp">Employment</option><option value="other">Other</option>
+      </select>
+      <input id="obEvent" type="text" placeholder="Event (e.g. US CPI)">
+      <input id="obTime" type="datetime-local" title="Release time (UTC)">
+      <input id="obHigh" type="number" step="any" placeholder="Candle high">
+      <input id="obLow" type="number" step="any" placeholder="Candle low">
+      <input id="obPrice" type="number" step="any" placeholder="Current price">
+      <button class="btn primary" id="obAdd">Add zone</button>
+      <span id="obMsg" class="down" style="font-size:12px"></span>
+    </div>
+  </div>
+  <div class="card"><h2>Entry plan</h2><div id="plan"></div></div>
+  <div class="card wrap"><h2>All zones</h2><table id="obTable"></table></div>
+  <div class="card"><h2>Zone map</h2><p class="muted" style="margin-top:0">Each band starts at its release candle and extends to the right. The dashed line is the current price you entered.</p><div id="zoneMap" class="grid2"></div></div>
+</section>
+<section id="chart">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <select id="chPair" style="width:110px" aria-label="Pair"></select>
+        <select id="chTf" style="width:80px" aria-label="Timeframe">
+          <option value="15m">15m</option><option value="1h" selected>1H</option><option value="4h">4H</option><option value="1d">1D</option>
+        </select>
+        <label class="tog"><input type="checkbox" id="lyZones" checked> Release zones</label>
+        <label class="tog"><input type="checkbox" id="lySwings" checked> Swings</label>
+        <label class="tog"><input type="checkbox" id="lyBos" checked> BOS / CHoCH</label>
+        <label class="tog"><input type="checkbox" id="lyFvg" checked> Fair value gaps</label>
+      </div>
+      <span id="liveStatus" class="muted"></span>
+    </div>
+  </div>
+  <div class="card"><div id="chartBox" class="wrap"></div><div id="chartNote" class="muted" style="margin-top:8px"></div></div>
+  <div class="card">
+    <h2>How to read the markups</h2>
+    <ul class="muted legend">
+      <li><b>Release zones</b> — the 1-hour candle of each data release, extended right. Filled automatically from live candles. Colour = factor (rate, inflation, GDP, employment).</li>
+      <li><b>Swings</b> — HH / HL / LH / LL mark confirmed swing highs and lows (3 candles each side).</li>
+      <li><b>BOS</b> — a close beyond the last swing in the direction of the trend. <b>CHoCH</b> — the first break against it (change of character).</li>
+      <li><b>FVG</b> — unfilled three-candle imbalances, extended until price fills them.</li>
+      <li>The headline signal uses the scoreboard: buy only at support when the pair bias is bullish, sell only at resistance when it is bearish.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<script>
+const CCY = ["USD","EUR","GBP","JPY","AUD","NZD","CAD","CHF"];
+// Market-convention base priority, used to build pair names like EURUSD, GBPJPY.
+const PRIORITY = ["EUR","GBP","AUD","NZD","USD","CAD","CHF","JPY"];
+const FACTORS = [
+  {k:"rate",  label:"Interest rate %", dir:+1},
+  {k:"gdp",   label:"GDP growth %",    dir:+1},
+  {k:"cpi",   label:"Inflation (CPI y/y) %", dir:+1},
+  {k:"unemp", label:"Unemployment %",  dir:-1},
+];
+const KEY = "fx-fundamental-scoreboard-v6";
+
+// Real releases gathered 3 Nov 2026: [previous release, latest release]. Blank = not found yet.
+// November seasonal: USD bullish; JPY, NZD, CAD bearish; others neutral (weak/conflicting history).
+function sample(){
+  const d = {
+    USD:{rate:[4.00,4.00],gdp:[2.2,3.4],cpi:[3.4,3.7],unemp:[4.1,4.2],season:"1"},
+    EUR:{rate:[2.50,2.50],gdp:[0.6,0.4],cpi:[3.2,3.8],unemp:[6.5,6.5],season:"0"},
+    GBP:{rate:[3.75,3.75],gdp:[0.6,0.5],cpi:[3.1,3.5],unemp:[4.9,4.7],season:"0"},
+    JPY:{rate:[1.25,1.25],gdp:[1.8,1.4],cpi:[1.9,2.1],unemp:[2.5,2.4],season:"-1"},
+    AUD:{rate:[4.60,4.85],gdp:[0.3,0.4],cpi:[4.0,4.3],unemp:[4.6,4.7],season:"0"},
+    NZD:{rate:[2.75,2.75],gdp:[0.9,0.2],cpi:[4.1,3.7],unemp:[5.4,5.6],season:"-1"},
+    CAD:{rate:[2.25,2.50],gdp:[0.3,3.3],cpi:[3.0,3.1],unemp:[6.4,6.5],season:"-1"},
+    CHF:{rate:[0.00,0.00],gdp:[0.5,1.5],cpi:[1.0,1.5],unemp:[3.1,3.1],season:"0"},
+  };
+  return {month:"2026-11", data:d, weights:{rate:1,gdp:1,cpi:1,unemp:1,season:1}, inflFlip:false, obs:[
+    {pair:"AUDUSD", event:"RBA rate decision (hiked to 4.85%)", time:"2026-11-03T03:30", factor:"rate", high:"", low:"", price:""},
+    {pair:"NZDUSD", event:"NZ Q3 employment / unemployment", time:"2026-11-03T21:45", factor:"unemp", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"Eurozone Oct flash CPI", time:"2026-11-04T10:00", factor:"cpi", high:"", low:"", price:""},
+    {pair:"GBPUSD", event:"BoE rate decision", time:"2026-11-05T12:00", factor:"rate", high:"", low:"", price:""},
+    {pair:"EURUSD", event:"US Oct jobs report (NFP)", time:"2026-11-06T13:30", factor:"unemp", high:"", low:"", price:""},
+  ], prices:{}};
+}
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || sample(); } catch { S = sample(); }
+S.prices ||= {};
+const guessFactor = ev => /rate|rba|boe|fed|fomc|ecb|boj|boc|snb|rbnz/i.test(ev) ? "rate" : /cpi|inflation|pce/i.test(ev) ? "cpi" : /gdp/i.test(ev) ? "gdp" : /job|employ|payroll|nfp/i.test(ev) ? "unemp" : "other";
+for (const o of S.obs){ o.factor ||= guessFactor(o.event||""); if (o.price!==""&&o.price!=null&&S.prices[o.pair]==null) S.prices[o.pair]=o.price; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
+
+const $ = id => document.getElementById(id);
+const sign = v => v>0?"up":v<0?"down":"flat";
+const fmt = v => (v>0?"+":"")+(+v.toFixed(2));
+const arrow = v => v>0?"▲":v<0?"▼":"■";
+
+// ---------- scoring ----------
+function factorScore(ccy, f){
+  const [prev, cur] = S.data[ccy][f.k];
+  if (prev===""||cur===""||prev==null||cur==null||isNaN(prev)||isNaN(cur)) return 0;
+  let dir = f.dir; if (f.k==="cpi" && S.inflFlip) dir = -1;
+  const ch = cur - prev;
+  return ch===0 ? 0 : Math.sign(ch)*dir;
+}
+function scores(){
+  const out = {};
+  for (const c of CCY){
+    const parts = {};
+    for (const f of FACTORS) parts[f.k] = factorScore(c,f)*(+S.weights[f.k]||0);
+    parts.season = (+S.data[c].season||0)*(+S.weights.season||0);
+    out[c] = {parts, total:Object.values(parts).reduce((a,b)=>a+b,0)};
+  }
+  return out;
+}
+const maxScore = () => FACTORS.reduce((a,f)=>a+Math.abs(+S.weights[f.k]||0),0)+Math.abs(+S.weights.season||0);
+function pairName(a,b){ return PRIORITY.indexOf(a)<PRIORITY.indexOf(b) ? [a,b] : [b,a]; }
+function allPairs(){
+  const ps=[]; for(let i=0;i<CCY.length;i++)for(let j=i+1;j<CCY.length;j++) ps.push(pairName(CCY[i],CCY[j]));
+  return ps;
+}
+function biasLabel(d){
+  if (d>=2) return ["Strong buy","up"]; if (d>0) return ["Buy","up"];
+  if (d<=-2) return ["Strong sell","down"]; if (d<0) return ["Sell","down"];
+  return ["Neutral","flat"];
+}
+function pairBias(base, quote, sc){ const d = sc[base].total - sc[quote].total; return {d, lab:biasLabel(d)}; }
+
+// ---------- render: data ----------
+function renderData(){
+  $("month").value = S.month;
+  let h = "<tr><th>Currency</th>";
+  for (const f of FACTORS) h += `<th colspan="3">${f.label}</th>`;
+  h += "<th>Seasonal (this month)</th></tr><tr><th></th>";
+  for (const f of FACTORS) h += "<th>Last</th><th>This</th><th>Δ</th>";
+  h += "<th></th></tr>";
+  for (const c of CCY){
+    h += `<tr><td><b>${c}</b></td>`;
+    for (const f of FACTORS){
+      const [p,n] = S.data[c][f.k]; const s = factorScore(c,f);
+      h += `<td><input type="number" step="any" data-c="${c}" data-k="${f.k}" data-i="0" value="${p??""}"></td>
+            <td><input type="number" step="any" data-c="${c}" data-k="${f.k}" data-i="1" value="${n??""}"></td>
+            <td class="${sign(s)}">${arrow(s)}</td>`;
+    }
+    const sv = S.data[c].season;
+    h += `<td><select data-c="${c}" data-season style="width:100px">
+      <option value="1" ${sv=="1"?"selected":""}>Bullish</option>
+      <option value="0" ${sv=="0"?"selected":""}>Neutral</option>
+      <option value="-1" ${sv=="-1"?"selected":""}>Bearish</option></select></td></tr>`;
+  }
+  $("dataTable").innerHTML = h;
+  $("weights").innerHTML = [...FACTORS,{k:"season",label:"Seasonal"}]
+    .map(f=>`<label>${f.label} <input type="number" step="0.5" min="0" data-w="${f.k}" value="${S.weights[f.k]}" style="width:60px"></label>`).join("");
+  $("inflFlip").checked = !!S.inflFlip;
+}
+
+// ---------- render: scoreboard ----------
+function renderBoard(sc){
+  const m = maxScore()||1;
+  const ranked = CCY.slice().sort((a,b)=>sc[b].total-sc[a].total);
+  let h = "<tr><th>#</th><th>Currency</th><th>Rate</th><th>GDP</th><th>Inflation</th><th>Employment</th><th>Seasonal</th><th>Total</th><th>Strength</th></tr>";
+  ranked.forEach((c,i)=>{
+    const p = sc[c].parts, t = sc[c].total;
+    const w = Math.min(50, Math.abs(t)/m*50);
+    const bar = `<div class="bar"><i style="left:${t>=0?50:50-w}%;width:${w}%;background:var(--${t>=0?"up":"down"})"></i><i style="left:50%;width:1px;background:var(--mute)"></i></div>`;
+    h += `<tr><td>${i+1}</td><td><b>${c}</b></td>` +
+      ["rate","gdp","cpi","unemp","season"].map(k=>`<td class="${sign(p[k])}">${fmt(p[k])}</td>`).join("") +
+      `<td><span class="pill ${sign(t)}">${fmt(t)}</span></td><td>${bar}</td></tr>`;
+  });
+  $("boardTable").innerHTML = h;
+}
+
+// ---------- render: pairs ----------
+function renderPairs(sc){
+  const rows = allPairs().map(([b,q])=>({b,q,...pairBias(b,q,sc)})).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d));
+  const line = r => `<tr><td><b>${r.b}${r.q}</b></td><td>${fmt(sc[r.b].total)}</td><td>${fmt(sc[r.q].total)}</td><td class="${sign(r.d)}">${fmt(r.d)}</td><td><span class="pill ${r.lab[1]}">${r.lab[0]}</span></td></tr>`;
+  const head = "<tr><th>Pair</th><th>Base</th><th>Quote</th><th>Gap</th><th>Bias</th></tr>";
+  $("topPairs").innerHTML = head + rows.filter(r=>r.d!==0).slice(0,8).map(line).join("") || head;
+  $("pairTable").innerHTML = head + rows.map(line).join("");
+  const ranked = CCY.slice().sort((a,b)=>sc[b].total-sc[a].total);
+  let m = "<tr><th></th>"+ranked.map(c=>`<th>${c}</th>`).join("")+"</tr>";
+  for (const r of ranked){
+    m += `<tr><td><b>${r}</b></td>` + ranked.map(c=>{
+      if (r===c) return "<td class='muted'>—</td>";
+      const d = sc[r].total-sc[c].total; return `<td class="${sign(d)}">${fmt(d)}</td>`;
+    }).join("") + "</tr>";
+  }
+  $("matrix").innerHTML = m;
+}
+
+// ---------- render: release zones ----------
+const FACTOR_LABEL = {rate:"Interest rate", cpi:"Inflation", gdp:"GDP", unemp:"Employment", other:"Other"};
+const pipSize = pair => pair.includes("JPY") ? 0.01 : 0.0001;
+const priceOf = pair => { const v = S.prices[pair]; return (v===""||v==null||isNaN(v)) ? null : +v; };
+const hasRange = o => o.high!==""&&o.low!==""&&o.high!=null&&o.low!=null&&!isNaN(o.high)&&!isNaN(o.low);
+function zoneInfo(o, sc){
+  const b = o.pair.slice(0,3), q = o.pair.slice(3), pb = pairBias(b,q,sc), p = priceOf(o.pair);
+  const fGap = o.factor && o.factor!=="other" ? sc[b].parts[o.factor]-sc[q].parts[o.factor] : null;
+  const z = {pb, fGap, role:"pending", roleLab:"Waiting for candle", roleCls:"flat", sig:"Enter the candle high/low after it closes", sigCls:"flat", rank:9, dist:null};
+  if (!hasRange(o)) return z;
+  if (p===null){ Object.assign(z,{roleLab:"Enter price", sig:"Enter the current price for "+o.pair}); return z; }
+  const hi=+o.high, lo=+o.low, pip=pipSize(o.pair);
+  if (p>hi){ z.role="support"; z.roleLab="Support"; z.roleCls="up"; z.dist=(p-hi)/pip; }
+  else if (p<lo){ z.role="resistance"; z.roleLab="Resistance"; z.roleCls="down"; z.dist=(lo-p)/pip; }
+  else { z.role="inside"; z.roleLab="Price in zone"; z.dist=0; }
+  const d = pb.d, dist = z.dist.toFixed(1)+" pips";
+  if (d===0){ z.sig="No fundamental bias — skip"; z.rank=8; }
+  else if (z.role==="inside"){ z.sig=(d>0?"▶ BUY entry — price is in the zone":"▶ SELL entry — price is in the zone"); z.sigCls=d>0?"up":"down"; z.rank=0; }
+  else if (z.role==="support" && d>0){ z.sig="Buy on retest — "+dist+" above zone"; z.sigCls="up"; z.rank=1; }
+  else if (z.role==="resistance" && d<0){ z.sig="Sell on retest — "+dist+" below zone"; z.sigCls="down"; z.rank=1; }
+  else { z.sig="Skip — zone works against the "+(d>0?"bullish":"bearish")+" bias"; z.rank=7; }
+  return z;
+}
+function renderOB(sc){
+  const sel = $("obPair").value;
+  $("obPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
+  if (sel) $("obPair").value = sel;
+  const rows = S.obs.map((o,i)=>({o,i,z:zoneInfo(o,sc)}));
+  // table
+  let h = "<tr><th>Pair</th><th>Factor</th><th>Event</th><th>Release (UTC)</th><th>Zone high</th><th>Zone low</th><th>Current price</th><th>Zone role</th><th>Pair bias</th><th>Factor gap</th><th>Signal</th><th></th></tr>";
+  for (const {o,i,z} of rows){
+    h += `<tr><td><b>${o.pair}</b></td><td><span class="ftag f-${o.factor}">${FACTOR_LABEL[o.factor]||"Other"}</span></td>
+      <td>${o.event||""}</td><td>${(o.time||"").replace("T"," ")}</td>
+      <td><input type="number" step="any" data-ob="${i}" data-f="high" value="${o.high}" style="width:90px"></td>
+      <td><input type="number" step="any" data-ob="${i}" data-f="low" value="${o.low}" style="width:90px"></td>
+      <td><input type="number" step="any" data-pair="${o.pair}" value="${S.prices[o.pair]??""}" style="width:100px"></td>
+      <td><span class="pill ${z.roleCls}">${z.roleLab}</span></td>
+      <td><span class="pill ${z.pb.lab[1]}">${z.pb.lab[0]} (${fmt(z.pb.d)})</span></td>
+      <td class="${z.fGap===null?"flat":sign(z.fGap)}">${z.fGap===null?"—":fmt(z.fGap)}</td>
+      <td class="${z.sigCls}">${z.sig}</td><td><button class="x" data-del="${i}" title="Delete zone">×</button></td></tr>`;
+  }
+  if (!rows.length) h += `<tr><td colspan="12" class="muted">No zones yet. Add the 1-hour candle of a data release above.</td></tr>`;
+  $("obTable").innerHTML = h;
+  // plan
+  const plan = rows.filter(r=>r.z.rank<=1).sort((a,b)=>a.z.rank-b.z.rank||a.z.dist-b.z.dist);
+  const pending = rows.filter(r=>r.z.role==="pending").length;
+  $("plan").innerHTML = plan.length
+    ? `<ul class="plan">${plan.map(({o,z})=>`<li><span class="pill ${z.sigCls}">${z.pb.d>0?"BUY":"SELL"} ${o.pair}</span> <b>${(+o.low)}–${(+o.high)}</b> · ${FACTOR_LABEL[o.factor]} zone (${o.event||"release"}) · <span class="${z.sigCls}">${z.sig}</span>${z.fGap!==null&&Math.sign(z.fGap)===Math.sign(z.pb.d)?' · <span class="muted">factor agrees ✔</span>':""}</li>`).join("")}</ul>`
+    : `<p class="muted" style="margin:0">No aligned zones yet.${pending?` ${pending} zone${pending>1?"s are":" is"} waiting for the candle high/low.`:""} A zone shows here once price sits on the side that matches the pair's bias.</p>`;
+  // map
+  const byPair = {};
+  rows.filter(r=>hasRange(r.o)).forEach(r=>(byPair[r.o.pair] ||= []).push(r));
+  $("zoneMap").innerHTML = Object.keys(byPair).length
+    ? Object.entries(byPair).map(([pair,rs])=>zoneSvg(pair,rs)).join("")
+    : `<p class="muted" style="margin:0">Zones appear here once they have a high and low.</p>`;
+}
+function zoneSvg(pair, rs){
+  const W=560,H=220,L=8,R=64,T=10,B=24, p=priceOf(pair);
+  const times = rs.map(r=>Date.parse(r.o.time+"Z")).filter(t=>!isNaN(t));
+  const t0 = (times.length?Math.min(...times):Date.now())-36e5*12, t1 = Math.max(Date.now(), ...times)+36e5*24;
+  let lo=Math.min(...rs.map(r=>+r.o.low)), hi=Math.max(...rs.map(r=>+r.o.high));
+  if (p!==null){ lo=Math.min(lo,p); hi=Math.max(hi,p); }
+  const pad=(hi-lo||pipSize(pair)*20)*0.15; lo-=pad; hi+=pad;
+  const x=t=>L+(W-L-R)*((t-t0)/((t1-t0)||1)), y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo));
+  const dp = pair.includes("JPY")?3:5;
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${pair} release zones">`;
+  for (let k=0;k<=4;k++){ const v=lo+(hi-lo)*k/4; s+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${W-R+6}" y="${y(v)+4}" class="axis">${v.toFixed(dp)}</text>`; }
+  for (const {o} of rs){
+    const tx = isNaN(Date.parse(o.time+"Z"))?L:x(Date.parse(o.time+"Z"));
+    const y1=y(+o.high), y2=y(+o.low);
+    s+=`<rect x="${tx}" y="${y1}" width="${W-R-tx}" height="${Math.max(2,y2-y1)}" class="zone z-${o.factor}"><title>${FACTOR_LABEL[o.factor]}: ${o.event} ${o.low}–${o.high}</title></rect>`;
+    s+=`<line x1="${tx}" x2="${tx}" y1="${y1}" y2="${y2}" class="zedge z-${o.factor}"/>`;
+    s+=`<text x="${tx+4}" y="${y1-3}" class="zlab">${(o.event||FACTOR_LABEL[o.factor]).slice(0,28)}</text>`;
+  }
+  if (p!==null) s+=`<line x1="${L}" x2="${W-R}" y1="${y(p)}" y2="${y(p)}" class="price"/><text x="${W-R+6}" y="${y(p)+4}" class="ptxt">${p}</text>`;
+  s+=`<text x="${L}" y="${H-6}" class="axis">${new Date(t0).toISOString().slice(5,16).replace("T"," ")}</text><text x="${W-R}" y="${H-6}" class="axis" text-anchor="end">now →</text></svg>`;
+  return `<div style="min-width:0"><div class="row" style="justify-content:space-between"><b>${pair}</b><span class="muted">${rs.length} zone${rs.length>1?"s":""}</span></div>${s}</div>`;
+}
+
+function renderAll(){ const sc = scores(); renderData(); renderBoard(sc); renderPairs(sc); renderOB(sc); renderChart(); }
+
+// ---------- live prices (served by /api/candles on the hosted site) ----------
+const LIVE = { ok:null, cache:{}, source:"", at:null };
+async function getCandles(pair, tf){
+  const k = pair+"|"+tf, c = LIVE.cache[k];
+  if (c && Date.now()-c.at < 55e3) return c.data;
+  const r = await fetch(`api/candles?pair=${pair}&tf=${tf}`);
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  const j = await r.json();
+  if (!j.candles || !j.candles.length) throw new Error("no candles");
+  LIVE.source = j.source;
+  LIVE.cache[k] = {at:Date.now(), data:j.candles};
+  return j.candles;
+}
+async function refreshLive(){
+  const pairs = [...new Set([...S.obs.map(o=>o.pair), $("chPair").value || "EURUSD"])];
+  let any = false;
+  await Promise.all(pairs.map(async pair=>{
+    try {
+      const c = await getCandles(pair, "1h"); any = true;
+      S.prices[pair] = +c[c.length-1].c.toFixed(pair.includes("JPY")?3:5);
+      for (const o of S.obs) {
+        if (o.pair!==pair || !o.time || (hasRange(o) && !o.auto)) continue;
+        const rel = Date.parse(o.time+"Z")/1000, hour = Math.floor(rel/3600)*3600;
+        const k = c.find(x=>x.t===hour);
+        if (k){ const d=pair.includes("JPY")?3:5; o.high=+k.h.toFixed(d); o.low=+k.l.toFixed(d); o.auto=true; }
+      }
+    } catch {}
+  }));
+  LIVE.ok = any; LIVE.at = new Date();
+  if (any) save();
+  renderAll();
+}
+
+// ---------- price-action markups ----------
+function swings(c, k=3){
+  const out=[];
+  for (let i=k;i<c.length-k;i++){
+    let sh=true, sl=true;
+    for (let j=i-k;j<=i+k;j++){ if(j===i) continue; if(c[j].h>c[i].h || (j>i&&c[j].h===c[i].h)) sh=false; if(c[j].l<c[i].l || (j>i&&c[j].l===c[i].l)) sl=false; }
+    if (sh) out.push({i, type:"H", p:c[i].h});
+    if (sl) out.push({i, type:"L", p:c[i].l});
+  }
+  let lastH=null, lastL=null;
+  for (const s of out){
+    if (s.type==="H"){ s.lab = lastH===null?"SH":(s.p>lastH?"HH":"LH"); lastH=s.p; }
+    else { s.lab = lastL===null?"SL":(s.p>lastL?"HL":"LL"); lastL=s.p; }
+  }
+  return out;
+}
+function structure(c, sw, k=3){
+  const ev=[]; let trend=null, hs=null, ls=null, si=0;
+  const sorted=[...sw].sort((a,b)=>a.i-b.i);
+  for (let i=0;i<c.length;i++){
+    while (si<sorted.length && sorted[si].i+k<=i){ const s=sorted[si++]; if(s.type==="H") hs={...s,used:false}; else ls={...s,used:false}; }
+    if (hs && !hs.used && c[i].c>hs.p){ ev.push({from:hs.i,to:i,p:hs.p,dir:"up",lab:trend==="down"?"CHoCH":"BOS"}); trend="up"; hs.used=true; }
+    if (ls && !ls.used && c[i].c<ls.p){ ev.push({from:ls.i,to:i,p:ls.p,dir:"down",lab:trend==="up"?"CHoCH":"BOS"}); trend="down"; ls.used=true; }
+  }
+  return {events:ev, trend};
+}
+function fvgs(c){
+  const out=[];
+  for (let i=2;i<c.length;i++){
+    if (c[i].l>c[i-2].h) out.push({i:i-1, top:c[i].l, bot:c[i-2].h, dir:"bull"});
+    if (c[i].h<c[i-2].l) out.push({i:i-1, top:c[i-2].l, bot:c[i].h, dir:"bear"});
+  }
+  for (const g of out){
+    g.end=null;
+    for (let j=g.i+2;j<c.length;j++){
+      if ((g.dir==="bull" && c[j].l<=g.bot) || (g.dir==="bear" && c[j].h>=g.top)){ g.end=j; break; }
+    }
+  }
+  return out;
+}
+
+// ---------- chart ----------
+let chartReq = 0;
+async function renderChart(){
+  const box = $("chartBox"); if (!box) return;
+  const pair = $("chPair").value || "EURUSD", tf = $("chTf").value;
+  if (LIVE.ok===false){
+    box.innerHTML = `<p class="muted" style="margin:0">Live prices are not available in this view. Open the hosted site to see the live chart with markups.</p>`;
+    $("chartNote").textContent=""; return;
+  }
+  const my = ++chartReq;
+  let c;
+  try { c = await getCandles(pair, tf); } catch(e){ if(my===chartReq){ box.innerHTML=`<p class="muted" style="margin:0">Could not load ${pair} candles (${e.message}). Retrying on the next refresh.</p>`; } return; }
+  if (my!==chartReq) return;
+  box.innerHTML = drawChart(pair, tf, c);
+  $("liveStatus").innerHTML = `<span class="live">● Live</span> · ${LIVE.source==="twelvedata"?"Twelve Data":"Yahoo Finance"} · updated ${LIVE.at?LIVE.at.toISOString().slice(11,16):"—"} UTC`;
+}
+function drawChart(pair, tf, all){
+  const N = 140, c = all.slice(-N), off = all.length - c.length;
+  const sw = swings(all), st = structure(all, sw), fv = fvgs(all);
+  const W=1000, H=520, L=8, R=78, T=14, B=26, cw=(W-L-R)/c.length;
+  const zonesHere = $("lyZones").checked ? S.obs.filter(o=>o.pair===pair && hasRange(o)) : [];
+  let lo=Math.min(...c.map(k=>k.l)), hi=Math.max(...c.map(k=>k.h));
+  for (const o of zonesHere){ const span=hi-lo; if (+o.low>lo-span*.5 && +o.high<hi+span*.5){ lo=Math.min(lo,+o.low); hi=Math.max(hi,+o.high); } }
+  const pad=(hi-lo)*0.06; lo-=pad; hi+=pad;
+  const X=i=>L+(i-off)*cw+cw/2, Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo)), inView=i=>i>=off;
+  const dp = pair.includes("JPY")?3:5, sc=scores();
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${pair} ${tf} chart with markups">`;
+  for (let k=0;k<=6;k++){ const v=lo+(hi-lo)*k/6; s+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="axis" x="${W-R+6}" y="${Y(v)+4}">${v.toFixed(dp)}</text>`; }
+  const step=Math.ceil(c.length/7);
+  for (let i=0;i<c.length;i+=step){ const d=new Date(c[i].t*1000).toISOString(); s+=`<text class="axis" x="${X(i+off)}" y="${H-8}" text-anchor="middle">${tf==="1d"?d.slice(5,10):d.slice(5,10)+" "+d.slice(11,16)}</text>`; }
+  // release zones
+  for (const o of zonesHere){
+    const rel=Math.floor(Date.parse(o.time+"Z")/1000/3600)*3600;
+    let si=all.findIndex(k=>k.t+(tf==="1d"?86400:tf==="4h"?14400:0)>rel); if (si<0) continue; si=Math.max(si,off);
+    const x1=X(si)-cw/2, y1=Y(+o.high), y2=Y(+o.low), z=zoneInfo(o,sc);
+    s+=`<rect class="zone z-${o.factor}" x="${x1}" y="${y1}" width="${W-R-x1}" height="${Math.max(1.5,y2-y1)}"><title>${FACTOR_LABEL[o.factor]} zone · ${o.event} · ${o.low}–${o.high} · ${z.sig}</title></rect>`;
+    s+=`<rect class="zedge z-${o.factor}" x="${x1}" y="${y1}" width="${W-R-x1}" height="${Math.max(1.5,y2-y1)}" style="fill:none"/>`;
+    const nearEnd = x1 > W-R-300;
+    s+=`<text class="zlab" x="${nearEnd?x1-6:x1+4}" y="${y1-4}" text-anchor="${nearEnd?"end":"start"}" style="fill:var(--z-${o.factor})">${(o.event||"").slice(0,34)} · ${z.roleLab}</text>`;
+  }
+  // FVGs (unfilled, most recent 6)
+  if ($("lyFvg").checked){
+    for (const g of fv.filter(g=>g.end===null && g.i>=off).slice(-6)){
+      const x1=X(g.i)-cw/2;
+      s+=`<rect class="fvg-${g.dir==="bull"?"b":"s"}" x="${x1}" y="${Y(g.top)}" width="${W-R-x1}" height="${Math.max(1,Y(g.bot)-Y(g.top))}"><title>${g.dir==="bull"?"Bullish":"Bearish"} FVG ${g.bot.toFixed(dp)}–${g.top.toFixed(dp)}</title></rect><text class="flab" x="${W-R-4}" y="${Y(g.top)+10}" text-anchor="end">FVG</text>`;
+    }
+  }
+  // candles
+  for (let i=0;i<c.length;i++){
+    const k=c[i], up=k.c>=k.o, x=X(i+off), bw=Math.max(1,cw*0.62);
+    s+=`<line class="wick-${up?"u":"d"}" x1="${x}" x2="${x}" y1="${Y(k.h)}" y2="${Y(k.l)}"/><rect class="${up?"cu":"cd"}" x="${x-bw/2}" y="${Y(Math.max(k.o,k.c))}" width="${bw}" height="${Math.max(1,Math.abs(Y(k.o)-Y(k.c)))}"/>`;
+  }
+  // structure
+  if ($("lyBos").checked){
+    for (const e of st.events.filter(e=>inView(e.to)).slice(-8)){
+      const x1=X(Math.max(e.from,off)), x2=X(e.to), y=Y(e.p), cls=e.lab==="CHoCH"?"choch":"bos";
+      s+=`<line class="${cls}" x1="${x1}" x2="${x2}" y1="${y}" y2="${y}"/><text class="${cls}lab" x="${(x1+x2)/2}" y="${e.dir==="up"?y-4:y+12}" text-anchor="middle">${e.lab}</text>`;
+    }
+  }
+  // swings
+  if ($("lySwings").checked){
+    for (const w of sw.filter(w=>inView(w.i))){
+      s+=`<text class="sw" x="${X(w.i)}" y="${w.type==="H"?Y(w.p)-6:Y(w.p)+14}" text-anchor="middle">${w.lab}</text>`;
+    }
+  }
+  // price
+  const last=all[all.length-1].c, py=Y(last);
+  s+=`<line class="price" x1="${L}" x2="${W-R}" y1="${py}" y2="${py}"/><rect class="ptag" x="${W-R+2}" y="${py-9}" width="${R-4}" height="18" rx="3"/><text class="ptxt" x="${W-R+6}" y="${py+4}">${last.toFixed(dp)}</text></svg>`;
+  const b=pair.slice(0,3), q=pair.slice(3), pb=pairBias(b,q,sc);
+  const trendTxt = st.trend==="up"?"bullish (last break was up)":st.trend==="down"?"bearish (last break was down)":"undefined";
+  const agree = st.trend && pb.d!==0 && ((st.trend==="up")===(pb.d>0));
+  $("chartNote").innerHTML = `Structure on ${tf}: <b>${trendTxt}</b> · Fundamental bias: <span class="pill ${pb.lab[1]}">${pb.lab[0]} (${fmt(pb.d)})</span> · ${pb.d===0||!st.trend?"":agree?'<span class="up">Price structure agrees with fundamentals ✔</span>':'<span class="down">Price structure disagrees with fundamentals</span>'}`;
+  return s;
+}
+
+// ---------- events ----------
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button,section").forEach(e=>e.classList.remove("on"));
+  b.classList.add("on"); $(b.dataset.tab).classList.add("on");
+});
+$("dataTable").addEventListener("change", e=>{
+  const t = e.target, c = t.dataset.c;
+  if (t.dataset.season!==undefined) S.data[c].season = t.value;
+  else if (t.dataset.k) S.data[c][t.dataset.k][+t.dataset.i] = t.value===""?"":+t.value;
+  save(); setTimeout(renderAll);
+});
+$("weights").addEventListener("change", e=>{ S.weights[e.target.dataset.w] = +e.target.value; save(); setTimeout(renderAll); });
+$("inflFlip").onchange = e=>{ S.inflFlip = e.target.checked; save(); renderAll(); };
+$("month").onchange = e=>{ S.month = e.target.value; save(); };
+function armed(btn, label){
+  if (btn.classList.contains("armed")) { btn.classList.remove("armed"); btn.textContent = btn.dataset.label; return true; }
+  btn.dataset.label = btn.textContent; btn.textContent = label; btn.classList.add("armed");
+  setTimeout(()=>{ if(btn.classList.contains("armed")){ btn.classList.remove("armed"); btn.textContent = btn.dataset.label; } }, 4000);
+  return false;
+}
+const note = t => { $("msg").textContent = t; setTimeout(()=>$("msg").textContent="", 4000); };
+$("roll").onclick = e=>{
+  if (!armed(e.currentTarget, "Click again to roll")) return;
+  for (const c of CCY) for (const f of FACTORS) S.data[c][f.k] = [S.data[c][f.k][1], ""];
+  const [y,m] = (S.month||new Date().toISOString().slice(0,7)).split("-").map(Number);
+  S.month = new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);
+  save(); renderAll(); note("Rolled to "+S.month);
+};
+$("reset").onclick = e=>{ if(armed(e.currentTarget, "Click again to reset")){ S = sample(); save(); renderAll(); note("Sample data restored"); } };
+$("export").onclick = ()=>{
+  const txt = JSON.stringify(S,null,2);
+  navigator.clipboard.writeText(txt).then(()=>note("Copied. Paste into a .json file to keep a backup."))
+    .catch(()=>note("Copy was blocked by this view."));
+};
+$("import").onchange = async e=>{
+  try { S = JSON.parse(await e.target.files[0].text()); save(); renderAll(); note("Imported"); } catch { note("That file is not a valid scoreboard backup."); }
+};
+$("obAdd").onclick = ()=>{
+  const hi = $("obHigh").value, lo = $("obLow").value;
+  if (hi===""||lo===""||+hi < +lo) return $("obMsg").textContent = "Enter the release candle high and low (high must be ≥ low).";
+  S.obs.push({pair:$("obPair").value, factor:$("obFactor").value, event:$("obEvent").value, time:$("obTime").value, high:+hi, low:+lo});
+  if ($("obPrice").value!=="") S.prices[$("obPair").value] = +$("obPrice").value;
+  ["obEvent","obTime","obHigh","obLow","obPrice"].forEach(id=>$(id).value=""); $("obMsg").textContent="";
+  save(); renderAll();
+};
+$("obTable").addEventListener("change", e=>{ const t=e.target, v=t.value===""?"":+t.value;
+  if (t.dataset.pair){ S.prices[t.dataset.pair]=v; save(); setTimeout(renderAll); return; }
+  const i=t.dataset.ob; if(i!==undefined){ S.obs[i][t.dataset.f] = v; save(); setTimeout(renderAll); }});
+$("obTable").addEventListener("click", e=>{ const i=e.target.dataset.del; if(i!==undefined){ S.obs.splice(+i,1); save(); renderAll(); }});
+
+$("chPair").innerHTML = allPairs().map(([b,q])=>`<option>${b}${q}</option>`).join("");
+$("chPair").value = (S.obs[0]&&S.obs[0].pair) || "EURUSD";
+["chPair","chTf","lyZones","lySwings","lyBos","lyFvg"].forEach(id=>$(id).addEventListener("change",()=>{ if(id==="chPair") refreshLive(); else renderChart(); }));
+renderAll();
+refreshLive();
+setInterval(refreshLive, 60000);
+</script>
