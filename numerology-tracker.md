@@ -29,6 +29,45 @@ Predictions are logged **before kick-off** and graded afterwards. No changes aft
 
 ---
 
+## Backtest: last round before the international break (6–9 Nov 2026), 35 matches
+
+### Rule 8: games with an "8" team (name number)
+
+| Match | 8 team | Pre-match goals/game | Rule bet | Score | Goals | Extreme? (≤1 or ≥4) | Bet |
+|---|---|---|---|---|---|---|---|
+| Hamburger SV vs Gladbach | HSV | 0.9 (low) | Under 1.5 | 3-1 | 4 | ✅ | ❌ |
+| Hoffenheim vs Schalke | Hoffenheim | 1.75 (middle) | no bet | 2-1 | 3 | ❌ | – |
+| Everton vs Coventry | Coventry | unknown | – | 3-1 | 4 | ✅ | – |
+| Leeds vs Tottenham | Tottenham | 1.1 (low) | Under 1.5 | 1-0 | 1 | ✅ | ✅ |
+| Ipswich vs Bournemouth | Bournemouth | unknown | – | 1-2 | 3 | ❌ | – |
+| Sunderland vs Chelsea | Chelsea | 2.1 (high) | Over 3.5 | 1-0 | 1 | ✅ | ❌ |
+| Man United vs Aston Villa | both | unknown | – | 4-4 | 8 | ✅ | – |
+| Sevilla vs Alavés | Sevilla | unknown | – | 0-0 | 0 | ✅ | – |
+| Espanyol vs Deportivo | Espanyol | unknown (poor) | – | 0-0 | 0 | ✅ | – |
+| Málaga vs Racing | Málaga | unknown | – | 1-2 | 3 | ❌ | – |
+
+**Extreme-score check (8 games vs all others), both rounds combined:**
+
+| | Extreme (≤1 or ≥4 goals) | Normal (2–3 goals) | Rate |
+|---|---|---|---|
+| Games with an 8 (6–9 Nov + 20 Nov) | 11 | 3 | **79%** |
+| Games without an 8 | 12 | 20 | **38%** |
+
+One-sided Fisher test p ≈ 0.012. Caveat: the "extreme" definition was chosen after looking at the data, and the sample is small.
+
+**Direction (high vs low from scoring form):** 3 right, 2 wrong across both rounds (Spurs ✅, Annecy ✅, Espanyol ✅, Chelsea ❌, HSV ❌).
+
+### Rule 1 vs 9
+
+No name-number 1 vs 9 matchups this round. Position-based (approximate, pre-match positions estimated):
+
+| Match | The 1 | The 9 | Bet | Score | Result |
+|---|---|---|---|---|---|
+| Napoli vs Lazio | Napoli (~10th → 1) | Lazio (name 9) | Lazio +1 | 1-1 | ✅ (Lazio is also 1st, conflicting) |
+| Mainz vs Bayern | Bayern (1st) | Mainz (name 9) | Mainz +1 | 1-2 | ⚪ push (Bayern won by exactly 1) |
+
+---
+
 ## Weekend 21–23 Nov 2026: predictions
 
 ### Rule 1 vs 9
@@ -61,5 +100,6 @@ Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man Ci
 
 | Rule | Bets | Won | Hit rate |
 |---|---|---|---|
-| 1 vs 9 handicap | 2 | 2 | 100% (too few to judge) |
-| 8 extreme high/low | 2 | 2 | 100% (too few to judge) |
+| 1 vs 9 handicap | 4 | 3 won, 1 push, 0 lost | 100% of decided bets (too few to judge) |
+| 8 direction (high/low by form) | 5 | 3 | 60% |
+| 8 "extreme score" pattern | 14 games | 11 extreme | 79% vs 38% baseline |
