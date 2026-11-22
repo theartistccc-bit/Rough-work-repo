@@ -1,0 +1,250 @@
+<title>Value Bet Checker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column like a betting slip; inputs as an odds board, verdict row per outcome */
+:root {
+  --bg: #f3f6f4;
+  --surface: #ffffff;
+  --ink: #15211b;
+  --muted: #5b6b62;
+  --line: #d5ded8;
+  --accent: #0d6b47;
+  --accent-soft: #e2f1e9;
+  --good: #0d7a4c;
+  --good-bg: #ddf3e7;
+  --bad: #a3382c;
+  --bad-bg: #f8e4e1;
+  --warn: #8a5a00;
+  --warn-bg: #fbefd4;
+  --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1512; --surface: #16201b; --ink: #e6eee9; --muted: #95a69c; --line: #2b3832;
+    --accent: #4fc28f; --accent-soft: #1b3127; --good: #5fd39e; --good-bg: #173326;
+    --bad: #f08a7c; --bad-bg: #3a1f1b; --warn: #e8b85a; --warn-bg: #3a2d14; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1512; --surface: #16201b; --ink: #e6eee9; --muted: #95a69c; --line: #2b3832;
+  --accent: #4fc28f; --accent-soft: #1b3127; --good: #5fd39e; --good-bg: #173326;
+  --bad: #f08a7c; --bad-bg: #3a1f1b; --warn: #e8b85a; --warn-bg: #3a2d14; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 20px; }
+header h1 { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; letter-spacing: .01em; margin: 0; line-height: 1.05; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 4px; }
+.tabs button {
+  flex: 1; border: 0; background: transparent; color: var(--muted); font: 600 0.92rem var(--font-body);
+  padding: 9px 6px; border-radius: 7px; cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); }
+.tabs button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 16px; }
+.panel h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; margin: 0; letter-spacing: .02em; }
+.hint { color: var(--muted); font-size: .86rem; margin: 0; }
+.example { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--warn); background: var(--warn-bg); padding: 2px 8px; border-radius: 99px; justify-self: start; }
+.board { display: grid; grid-template-columns: minmax(72px, 1fr) repeat(var(--cols, 3), minmax(0, 1fr)); gap: 8px; align-items: center; }
+.board .head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); text-align: center; }
+.board .rowlab { font-size: .85rem; font-weight: 600; }
+input, select {
+  width: 100%; min-width: 0; font: 500 1rem var(--font-num); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 8px; text-align: center; font-variant-numeric: tabular-nums;
+}
+select { font-family: var(--font-body); text-align: left; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.settings label { display: grid; gap: 4px; font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.settings input { text-align: left; }
+.results { display: grid; gap: 8px; }
+.res {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.res .name { font-weight: 600; }
+.res .nums { font: 500 .85rem var(--font-num); color: var(--muted); font-variant-numeric: tabular-nums; grid-column: 1; }
+.pill { grid-row: 1 / span 2; grid-column: 2; font: 700 .8rem var(--font-body); letter-spacing: .04em; text-transform: uppercase; padding: 6px 10px; border-radius: 99px; text-align: center; white-space: nowrap; }
+.pill small { display: block; font: 500 .72rem var(--font-num); text-transform: none; letter-spacing: 0; }
+.pill.bet { background: var(--good-bg); color: var(--good); }
+.pill.no { background: var(--bad-bg); color: var(--bad); }
+.pill.close { background: var(--warn-bg); color: var(--warn); }
+.summary { font-size: .9rem; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 12px; }
+.summary b { color: var(--ink); font-family: var(--font-num); font-weight: 500; }
+.rules { font-size: .86rem; color: var(--muted); margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.err { color: var(--bad); font-size: .86rem; margin: 0; }
+@media (max-width: 420px) { .board { grid-template-columns: 64px repeat(var(--cols, 3), minmax(0, 1fr)); } header h1 { font-size: 1.8rem; } }
+@media (prefers-reduced-motion: no-preference) { .pill { transition: background-color .2s, color .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Value Bet Checker</h1>
+    <p>Compares your bookmaker's price with a fair price. The fair price comes from Pinnacle's odds with their margin removed, or from the cards model. You bet only when your price is clearly higher.</p>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-price" aria-selected="true" aria-controls="panel-price">Match result</button>
+    <button role="tab" id="tab-cards" aria-selected="false" aria-controls="panel-cards">Cards</button>
+    <button role="tab" id="tab-clv" aria-selected="false" aria-controls="panel-clv">Closing line</button>
+  </div>
+
+  <section class="panel" id="panel-price" role="tabpanel" aria-labelledby="tab-price">
+    <h2>Price shopping against Pinnacle</h2>
+    <span class="example">Example: Liverpool vs Man United</span>
+    <div class="board" style="--cols:3">
+      <span></span><span class="head">Home</span><span class="head">Draw</span><span class="head">Away</span>
+      <span class="rowlab">Pinnacle</span>
+      <input id="p1" inputmode="decimal" value="1.80" aria-label="Pinnacle home odds">
+      <input id="p2" inputmode="decimal" value="4.20" aria-label="Pinnacle draw odds">
+      <input id="p3" inputmode="decimal" value="4.30" aria-label="Pinnacle away odds">
+      <span class="rowlab">Your bookie</span>
+      <input id="b1" inputmode="decimal" value="1.85" aria-label="Your bookmaker home odds">
+      <input id="b2" inputmode="decimal" value="4.50" aria-label="Your bookmaker draw odds">
+      <input id="b3" inputmode="decimal" value="4.10" aria-label="Your bookmaker away odds">
+    </div>
+    <div class="settings">
+      <label for="thr1">Minimum edge %<input id="thr1" inputmode="decimal" value="4"></label>
+      <label for="max1">Maximum odds<input id="max1" inputmode="decimal" value="6"></label>
+      <label for="bank1">Bankroll<input id="bank1" inputmode="decimal" value="1000"></label>
+      <label for="stk1">Stake % of bankroll<input id="stk1" inputmode="decimal" value="1"></label>
+    </div>
+    <p class="err" id="err1" hidden></p>
+    <div class="results" id="res1"></div>
+    <p class="summary" id="sum1"></p>
+  </section>
+
+  <section class="panel" id="panel-cards" role="tabpanel" aria-labelledby="tab-cards" hidden>
+    <h2>Yellow cards against the model</h2>
+    <span class="example">Example: Liverpool vs Man United, average referee</span>
+    <p class="hint">Get the fair odds from <code>cards_model.py predict</code>. Check that your bookmaker counts yellow cards only, because some count a red as 2.</p>
+    <div class="settings">
+      <label for="line">Line (cards)<select id="line"><option>2.5</option><option>3.5</option><option selected>4.5</option><option>5.5</option><option>6.5</option></select></label>
+    </div>
+    <div class="board" style="--cols:2">
+      <span></span><span class="head">Over</span><span class="head">Under</span>
+      <span class="rowlab">Model fair</span>
+      <input id="c1" inputmode="decimal" value="2.60" aria-label="Model fair odds for over">
+      <input id="c2" inputmode="decimal" value="1.63" aria-label="Model fair odds for under">
+      <span class="rowlab">Your bookie</span>
+      <input id="d1" inputmode="decimal" value="2.80" aria-label="Your bookmaker odds for over">
+      <input id="d2" inputmode="decimal" value="1.40" aria-label="Your bookmaker odds for under">
+    </div>
+    <div class="settings">
+      <label for="thr2">Minimum edge %<input id="thr2" inputmode="decimal" value="6"></label>
+      <label for="bank2">Bankroll<input id="bank2" inputmode="decimal" value="1000"></label>
+      <label for="stk2">Stake % of bankroll<input id="stk2" inputmode="decimal" value="0.5"></label>
+    </div>
+    <p class="err" id="err2" hidden></p>
+    <div class="results" id="res2"></div>
+    <p class="summary" id="sum2"></p>
+  </section>
+
+  <section class="panel" id="panel-clv" role="tabpanel" aria-labelledby="tab-clv" hidden>
+    <h2>Did you beat the closing line?</h2>
+    <p class="hint">After kick-off, enter the odds you took and Pinnacle's closing odds for all outcomes. Positive CLV over 100+ bets is the clearest sign of a real edge, well before profit shows.</p>
+    <span class="example">Example: draw taken at 4.50</span>
+    <div class="settings">
+      <label for="taken">Odds you took<input id="taken" inputmode="decimal" value="4.50"></label>
+      <label for="pick">Your pick<select id="pick"><option value="0">Home</option><option value="1" selected>Draw</option><option value="2">Away</option></select></label>
+    </div>
+    <div class="board" style="--cols:3">
+      <span></span><span class="head">Home</span><span class="head">Draw</span><span class="head">Away</span>
+      <span class="rowlab">Pinnacle close</span>
+      <input id="k1" inputmode="decimal" value="1.75" aria-label="Pinnacle closing home odds">
+      <input id="k2" inputmode="decimal" value="4.05" aria-label="Pinnacle closing draw odds">
+      <input id="k3" inputmode="decimal" value="4.80" aria-label="Pinnacle closing away odds">
+    </div>
+    <p class="err" id="err3" hidden></p>
+    <div class="results" id="res3"></div>
+    <ul class="rules">
+      <li>CLV = odds you took ÷ fair closing odds − 1.</li>
+      <li>Keep a list of every bet with its CLV. Average it after each 50 bets.</li>
+      <li>Average CLV above +2% means the method is working, even through losing runs.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const num = (id) => { const v = parseFloat(String($(id).value).replace(",", ".")); return isFinite(v) ? v : NaN; };
+  const pct = (x) => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+  const money = (x) => x.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+  function devig(odds) {
+    const inv = odds.map((o) => 1 / o); const s = inv.reduce((a, b) => a + b, 0);
+    return { probs: inv.map((i) => i / s), margin: s - 1 };
+  }
+  function row(name, nums, verdict, cls, sub) {
+    return `<div class="res"><span class="name">${name}</span><span class="pill ${cls}">${verdict}${sub ? `<small>${sub}</small>` : ""}</span><span class="nums">${nums}</span></div>`;
+  }
+  function showErr(id, msg) { const e = $(id); e.textContent = msg || ""; e.hidden = !msg; }
+
+  function priceCheck() {
+    const p = ["p1", "p2", "p3"].map(num), b = ["b1", "b2", "b3"].map(num);
+    const thr = num("thr1") / 100, mx = num("max1"), bank = num("bank1"), stk = num("stk1") / 100;
+    if ([...p, ...b].some((x) => !(x > 1))) { showErr("err1", "Enter all six odds as decimals above 1.00, for example 2.10."); $("res1").innerHTML = ""; $("sum1").textContent = ""; return; }
+    showErr("err1");
+    const { probs, margin } = devig(p); const names = ["Home", "Draw", "Away"]; let html = "", bets = 0;
+    probs.forEach((q, i) => {
+      const fair = 1 / q, edge = b[i] / fair - 1;
+      let verdict = "No bet", cls = "no", sub = "";
+      if (edge >= thr && b[i] <= mx) { verdict = "Bet"; cls = "bet"; sub = "stake " + money(bank * stk); bets++; }
+      else if (edge >= thr && b[i] > mx) { verdict = "Too long"; cls = "close"; sub = "odds above " + mx; }
+      else if (edge > 0) { verdict = "Small edge"; cls = "close"; sub = "below " + (thr * 100).toFixed(0) + "%"; }
+      html += row(names[i], `fair ${(q * 100).toFixed(1)}% · fair odds ${fair.toFixed(2)} · yours ${b[i].toFixed(2)} · edge ${pct(edge)}`, verdict, cls, sub);
+    });
+    $("res1").innerHTML = html;
+    $("sum1").innerHTML = `Pinnacle margin <b>${(margin * 100).toFixed(1)}%</b> · ${bets ? `<b>${bets}</b> bet${bets > 1 ? "s" : ""} qualify` : "nothing qualifies"} at a minimum edge of <b>${(thr * 100).toFixed(1)}%</b>.`;
+  }
+
+  function cardsCheck() {
+    const c = ["c1", "c2"].map(num), d = ["d1", "d2"].map(num);
+    const thr = num("thr2") / 100, bank = num("bank2"), stk = num("stk2") / 100, line = $("line").value;
+    if ([...c, ...d].some((x) => !(x > 1))) { showErr("err2", "Enter all four odds as decimals above 1.00."); $("res2").innerHTML = ""; $("sum2").textContent = ""; return; }
+    showErr("err2");
+    let html = "", bets = 0; const names = [`Over ${line}`, `Under ${line}`];
+    const tot = 1 / c[0] + 1 / c[1];
+    c.forEach((fairOdds, i) => {
+      const edge = d[i] / fairOdds - 1;
+      let verdict = "No bet", cls = "no", sub = "";
+      if (edge >= thr) { verdict = "Bet"; cls = "bet"; sub = "stake " + money(bank * stk); bets++; }
+      else if (edge > 0) { verdict = "Small edge"; cls = "close"; sub = "below " + (thr * 100).toFixed(0) + "%"; }
+      html += row(names[i], `model ${(100 / fairOdds).toFixed(1)}% · fair ${fairOdds.toFixed(2)} · yours ${d[i].toFixed(2)} · edge ${pct(edge)}`, verdict, cls, sub);
+    });
+    $("res2").innerHTML = html;
+    const warn = Math.abs(tot - 1) > 0.03 ? " The two fair odds should add up to 100%. Check you copied the same line." : "";
+    $("sum2").innerHTML = `${bets ? `<b>${bets}</b> bet qualifies` : "Nothing qualifies"} at a minimum edge of <b>${(thr * 100).toFixed(1)}%</b>. The cards model is tested for accuracy, not yet for profit, so keep stakes small.${warn}`;
+  }
+
+  function clvCheck() {
+    const k = ["k1", "k2", "k3"].map(num), t = num("taken"), i = +$("pick").value;
+    if ([...k, t].some((x) => !(x > 1))) { showErr("err3", "Enter the odds you took and all three closing odds."); $("res3").innerHTML = ""; return; }
+    showErr("err3");
+    const { probs } = devig(k); const fair = 1 / probs[i], clv = t / fair - 1;
+    const cls = clv > 0.02 ? "bet" : clv > 0 ? "close" : "no";
+    const verdict = clv > 0.02 ? "Beat the close" : clv > 0 ? "Slightly ahead" : "Behind the close";
+    $("res3").innerHTML = row(["Home", "Draw", "Away"][i], `took ${t.toFixed(2)} · fair close ${fair.toFixed(2)} · CLV ${pct(clv)}`, verdict, cls, pct(clv));
+  }
+
+  const panels = { price: priceCheck, cards: cardsCheck, clv: clvCheck };
+  document.querySelectorAll(".tabs button").forEach((btn) => btn.addEventListener("click", () => {
+    document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b === btn)));
+    const key = btn.id.replace("tab-", "");
+    Object.keys(panels).forEach((p) => { $("panel-" + p).hidden = p !== key; });
+    panels[key]();
+  }));
+  document.querySelectorAll("input, select").forEach((el) => el.addEventListener("input", () => { priceCheck(); cardsCheck(); clvCheck(); }));
+  priceCheck(); cardsCheck(); clvCheck();
+})();
+</script>
