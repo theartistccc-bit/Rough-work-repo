@@ -57,3 +57,20 @@ Caveats:
 - "Max" odds are the best price across many bookmakers when the data was collected, so you won't always be able to get them.
 - Soft bookmakers limit accounts that win.
 - Only 898 of the 2025/26 matches have Pinnacle closing odds.
+
+---
+
+## Lower leagues (`model/lower_leagues.py`)
+
+These leagues were tested: Championship, League One, League Two, Segunda, Serie B, 2. Bundesliga and Ligue 2. Model parameters came from the top-5 tuning, and the betting rules were fixed in advance, so both seasons are out of sample. Pinnacle odds in the 2025/26 files cover only part of the season.
+
+**Accuracy:** the model was less accurate than Pinnacle opening odds in all 7 leagues in both seasons, by about 0.004–0.011 RPS.
+
+| Strategy (all 7 leagues combined) | 2024/25 | 2025/26 |
+|---|---|---|
+| Model, average price, edge ≥ 5% | 1,554 bets, ROI −11.0%, CLV −7.2% | 554 bets, ROI −11.3%, CLV −7.5% |
+| Model, best price, edge ≥ 5% | 2,406 bets, ROI −4.1%, CLV −2.2% | 825 bets, ROI −7.9%, CLV −2.5% |
+| 50/50 model + Pinnacle, best price, edge ≥ 3% | 1,825 bets, ROI −2.4%, CLV −1.9% | 619 bets, ROI −5.7%, CLV −2.0% |
+| Price shopping vs Pinnacle, edge ≥ 4% | 209 bets, ROI +13.3%, CLV +2.9% | 72 bets, ROI −4.1%, CLV +3.4% |
+
+**Conclusion:** there was no analytical edge in the lower leagues either. Model-driven bets had negative CLV everywhere. Price shopping again had positive CLV in both seasons.
