@@ -8,8 +8,7 @@ Predictions are logged **before kick-off** and graded afterwards. No changes aft
 
 **Rule 8 (abundance):** a team whose name or position is 8:
 - in scoring form (season ≥ 1.8 goals/game, until last-5 data is available) → **extreme high: over 3.5 goals**
-- not in scoring form (< 1.3 goals/game) → **extreme low: under 1.5 goals**
-- in between (1.3–1.8 goals/game) → no bet, logged only
+- not in scoring form → **no bet at all** (updated 22 Nov: low-energy 8s are never played, not even unders)
 - League position does not decide form, only goals scored does.
 
 **Rule 1 vs 9 (updated 22 Nov):** a 1 (name or position) plays a 9 (name, position, or a team that moves into 9th with a win) → **bet the opponent of the 1 at +2 or +3 handicap**, so the 1 can win by up to 1–2 goals and the bet still wins.
@@ -134,7 +133,8 @@ Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man Ci
 | 1 vs 9 handicap (+2) | 7 | 6 won, 1 push | 100% of decided bets |
 | 1 vs 9 handicap (+3) | 7 | 7 won | 100% (low odds) |
 | Double-8 over 3.5 | 2 | 2 (Man Utd–Villa 4-4, Troyes–Le Havre 3-1; form not checked) | – |
-| 8 direction, pre-logged | 3 | 1 (Chelsea ✅, Spurs ❌, Hoffenheim ❌) | 33% |
+| 8 in-form over 3.5 (only bet the rule now allows) | 4 | 2 (Annecy ✅, Chelsea 21 Nov ✅, Chelsea 8 Nov ❌, Hoffenheim ❌) | 50% |
+| Low-energy 8 unders (now dropped) | 4 | – | no longer played |
 | 8 "extreme" pattern | 21 games | 15 extreme | 71% vs 49% baseline (p ≈ 0.07) |
 | 8 direction (high/low by form) | 5 | 3 | 60% |
 | 8 "extreme score" pattern | 14 games | 11 extreme | 79% vs 38% baseline |
