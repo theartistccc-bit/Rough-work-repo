@@ -138,3 +138,19 @@ Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man Ci
 | 8 "extreme" pattern | 21 games | 15 extreme | 71% vs 49% baseline (p ≈ 0.07) |
 | 8 direction (high/low by form) | 5 | 3 | 60% |
 | 8 "extreme score" pattern | 14 games | 11 extreme | 79% vs 38% baseline |
+
+---
+
+## Full-season study: 2025/26, 7 leagues (PL, La Liga, Serie A, Bundesliga, Ligue 1, Primeira Liga, Eredivisie)
+
+Data: openfootball (raw.githubusercontent.com), 2,220 matches with scores (~95% of the season); 1,874 where both teams had 5 prior games. League table rebuilt before each matchday. Scoring form = 2.0+ goals/game over the last 5 league games. Script: `numerology/study8.py`.
+
+| Test | Rule games | Control games | p |
+|---|---|---|---|
+| Any 8: extreme score (≤1 or ≥4) | 404/808 = **50.0%** | no-8 games: 535/1066 = **50.2%** | 0.55 |
+| Any 8: over 3.5 | 258/808 = 31.9% | no-8 games: 361/1066 = 33.9% | 0.82 |
+| In-form 8: over 3.5 (current rule) | 65/183 = **35.5%** | in-form non-8 teams: 178/485 = **36.7%** | 0.64 |
+| Double-8 (any form): over 3.5 | 35/105 = 33.3% | no-8 games: 33.9% | 0.58 |
+| Double-8, both in form: over 3.5 | 1/3 | both-in-form non-8: 26/69 = 37.7% | 0.76 |
+
+**Conclusion:** across a full season, games with an 8 were no more extreme and no higher-scoring than games without one. The in-form 8 rule hit over 3.5 at the same rate as any in-form team. The pattern seen in the 3-round sample did not hold up.
