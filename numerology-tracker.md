@@ -93,6 +93,34 @@ No name-number 1 vs 9 matchups this round. Position-based (approximate, pre-matc
 | 🏴 Aston Villa vs Sunderland | Villa (name) | unknown | check | | |
 | 🏴 Coventry vs Crystal Palace | Coventry (name) | unknown | check | | |
 
+### Graded: Fri 20 + Sat 21 Nov (37 matches, PL/BL/SA/LL/L1 + Fri extras)
+
+PL Saturday scores come from one source (NBC) and were not independently confirmed.
+
+**Pre-logged bets (made before kick-off):**
+
+| Match | Bet | Score | Result |
+|---|---|---|---|
+| Como vs Cagliari | Cagliari +1 | 2-0 | ❌ (+2 push, +3 ✅) |
+| Frankfurt vs Hoffenheim | Hoffenheim +1 | 1-0 | ✅ |
+| Lazio vs Lecce | Lazio −1 | 3-0 | ✅ |
+| Chelsea vs Leeds | Over 3.5 | 1-4 | ✅ |
+| Tottenham vs Ipswich | Under 1.5 | 2-0 | ❌ |
+| Frankfurt vs Hoffenheim | Over 3.5 | 1-0 | ❌ |
+
+**New rules applied (1 vs 9 at +2/+3, double-8):**
+
+| Match | Trigger | Bet | Score | +2 | +3 |
+|---|---|---|---|---|---|
+| Frankfurt (10th → 1) vs Hoffenheim (9th) | 1 vs 9 | Hoffenheim +2/+3 | 1-0 | ✅ | ✅ |
+| Como (name 1) vs Cagliari (9th) | 1 vs 9 | Cagliari +2/+3 | 2-0 | ⚪ push | ✅ |
+| Lazio (name 9, also 1st) vs Lecce (name 1) | 1 vs 9 (conflict) | Lazio +2/+3 | 3-0 | ✅ | ✅ |
+| Troyes (17th → 8) vs Le Havre (name 8) | double-8 | Over 3.5 | 3-1 | ✅ (form not verified) | |
+
+**8 "extreme" check, Fri + Sat only:** games with an 8: 8 of 11 extreme (73%); games without: 16 of 26 (62%). Saturday was high-scoring/extreme across the board, so the gap mostly closed (p ≈ 0.40).
+
+**All three rounds combined:** with an 8: 15 of 21 (71%); without: 25 of 51 (49%); p ≈ 0.07.
+
 ### Data gaps (positions not found)
 Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man City (1) vs Fulham, Newcastle vs Arsenal (1st), Brentford vs Everton (9).
 
@@ -103,7 +131,10 @@ Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man Ci
 | Rule | Bets | Won | Hit rate |
 |---|---|---|---|
 | 1 vs 9 handicap (+1, old) | 4 | 3 won, 1 push | 100% of decided bets |
-| 1 vs 9 handicap (+2, new) | 4 | 4 won (Annecy, Köln, Lazio, Mainz) | 100% (too few to judge) |
-| Double-8 over 3.5 | 1 | 1 (Man Utd–Villa 4-4, form not checked) | – |
+| 1 vs 9 handicap (+2) | 7 | 6 won, 1 push | 100% of decided bets |
+| 1 vs 9 handicap (+3) | 7 | 7 won | 100% (low odds) |
+| Double-8 over 3.5 | 2 | 2 (Man Utd–Villa 4-4, Troyes–Le Havre 3-1; form not checked) | – |
+| 8 direction, pre-logged | 3 | 1 (Chelsea ✅, Spurs ❌, Hoffenheim ❌) | 33% |
+| 8 "extreme" pattern | 21 games | 15 extreme | 71% vs 49% baseline (p ≈ 0.07) |
 | 8 direction (high/low by form) | 5 | 3 | 60% |
 | 8 "extreme score" pattern | 14 games | 11 extreme | 79% vs 38% baseline |
