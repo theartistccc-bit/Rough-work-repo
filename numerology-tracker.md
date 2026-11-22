@@ -154,3 +154,20 @@ Data: openfootball (raw.githubusercontent.com), 2,220 matches with scores (~95% 
 | Double-8, both in form: over 3.5 | 1/3 | both-in-form non-8: 26/69 = 37.7% | 0.76 |
 
 **Conclusion:** across a full season, games with an 8 were no more extreme and no higher-scoring than games without one. The in-form 8 rule hit over 3.5 at the same rate as any in-form team. The pattern seen in the 3-round sample did not hold up.
+
+## Full-season study: 1 vs 9 handicap, 2025/26, same 7 leagues
+
+1 = name 1, or position 1st/10th/19th. 9 = name 9, position 9th/18th, or a team that would move into 9th with a win. Teams that are both 1 and 9 excluded. Bet = opponent of the 1 at +2 / +3 (Asian: push when the 1 wins by exactly 2 / 3). Script: `numerology/study19.py`.
+
+| Group | Bets | +2 win% (excl. push) | +3 win% (excl. push) |
+|---|---|---|---|
+| **1 vs 9 (rule)** | 122 | **86.1%** (W93 P14 L15) | **96.4%** (W107 P11 L4) |
+| 1 vs non-9 (control) | 732 | 87.5% | 96.2% |
+| Any team (baseline) | 4,252 | 90.7% | 97.0% |
+
+- By 9 type at +2: name 91.5% (55), position 87.3% (61), move-to-9th 80.0% (26).
+- 1 = top-5 side: rule 75.0% vs control 69.1% at +2 (n = 57, not significant).
+- The 1's results against a 9: won 59, drew 23, lost 40 (48% wins), against non-9s it won 40%. The 1 did **not** struggle more against 9s.
+- p (rule better than control): 0.72 at +2, 0.58 at +3.
+
+**Conclusion:** the +2/+3 handicap wins almost every time for *any* team, because few matches are won by 3+ goals. The 9 adds no edge. At typical prices (+3 ≈ 1.03–1.06, +2 ≈ 1.10–1.25) these win rates are around break-even or below after the bookmaker's margin.
