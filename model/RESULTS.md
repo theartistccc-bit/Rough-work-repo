@@ -94,3 +94,30 @@ These leagues were tested: Championship, League One, League Two, Segunda, Serie 
 | Pinnacle opening | 0.1942 | 0.1928 | | |
 
 Per-team home advantage is a small real improvement in accuracy, and it's kept. None of the variants closes the gap to Pinnacle, and CLV stays negative in every version.
+
+---
+
+## Cards model (`model/cards_model.py`)
+
+**What it models:**
+- Total yellow cards per match: each team's booking tendency, plus how often it gets opponents booked.
+- Referee strictness (English leagues only, since only they have referee data).
+- Time-decay weighting and a negative binomial spread.
+- Match closeness (from the pre-match odds) was tested and added nothing (beta tuned to 0).
+
+**Method:** tuned on 2024/25, tested on 2025/26 (3,408 matches, 8 leagues).
+
+| 2025/26 log loss (lower is better) | Over 3.5 | Over 4.5 |
+|---|---|---|
+| League average (baseline) | 0.6905 | 0.6359 |
+| Teams only | 0.6828 | 0.6295 |
+| **Full model** | **0.6804** | **0.6275** |
+| England: teams only | 0.6910 | 0.6287 |
+| England: teams + referee | **0.6869** | **0.6254** |
+
+**Calibration (over 4.5):** predicted probabilities fall within about 1–2 points of actual frequencies across the 20–60% range.
+
+Referees add a real, measurable improvement on top of team behaviour. No historical cards odds are available, so profit against bookmakers is untested.
+
+Fair odds: `python3 -I model/cards_model.py predict <data_dir> "E0|Liverpool|Man United|A Taylor"`
+Referee table: `python3 -I model/cards_model.py referees <data_dir> E0`
