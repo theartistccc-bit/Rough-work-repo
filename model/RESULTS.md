@@ -74,3 +74,23 @@ These leagues were tested: Championship, League One, League Two, Segunda, Serie 
 | Price shopping vs Pinnacle, edge ≥ 4% | 209 bets, ROI +13.3%, CLV +2.9% | 72 bets, ROI −4.1%, CLV +3.4% |
 
 **Conclusion:** there was no analytical edge in the lower leagues either. Model-driven bets had negative CLV everywhere. Price shopping again had positive CLV in both seasons.
+
+---
+
+## Checks (`model/checks.py`)
+
+**1. Audit of 10 random 2025/26 matches:** the ratings, expected goals, probabilities and EV figures recompute correctly by hand. For example, Man City vs Everton: draw at 22.5% × 5.25 − 1 = +18.2%. The model flagged 7 of the 10 matches as bets, and all 7 lost. Each one was a match where the model disagreed with Pinnacle, and Pinnacle was closer.
+
+**2. Independent Elo model** (tuned on 2024/25): 2025/26 RPS 0.2035, worse than the Poisson model's 0.1978 and Pinnacle's 0.1928. Bets: ROI −3.3% to −7.2%, CLV −3.2% to −6.6%.
+
+**3. Improvements:**
+
+| Variant | RPS 2024/25 | RPS 2025/26 | Best-price ROI 24/25 · 25/26 | CLV 24/25 · 25/26 |
+|---|---|---|---|---|
+| Original | 0.1994 | 0.1978 | −3.3% · −4.7% | −0.8% · −2.3% |
+| + promoted teams from 2nd division | 0.2001 | 0.1976 | −5.1% · −9.6% | −0.9% · −1.9% |
+| + per-team home advantage | **0.1991** | **0.1968** | +0.2% · +1.9% | −0.7% · −2.3% |
+| + both | 0.1995 | 0.1967 | −3.3% · −3.0% | −0.8% · −2.3% |
+| Pinnacle opening | 0.1942 | 0.1928 | | |
+
+Per-team home advantage is a small real improvement in accuracy, and it's kept. None of the variants closes the gap to Pinnacle, and CLV stays negative in every version.
