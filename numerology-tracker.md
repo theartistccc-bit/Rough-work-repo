@@ -12,7 +12,9 @@ Predictions are logged **before kick-off** and graded afterwards. No changes aft
 - in between (1.3–1.8 goals/game) → no bet, logged only
 - League position does not decide form, only goals scored does.
 
-**Rule 1 vs 9:** a 1 (name or position) plays a 9 (name, position, or a team that moves into 9th with a win) → **bet the handicap against the 1** (opponent +1 when the 9 is the underdog, or 9 −1 when the 9 is the favourite).
+**Rule 1 vs 9 (updated 22 Nov):** a 1 (name or position) plays a 9 (name, position, or a team that moves into 9th with a win) → **bet the opponent of the 1 at +2 or +3 handicap**, so the 1 can win by up to 1–2 goals and the bet still wins.
+
+**Rule 8 double-8 (added 22 Nov):** both teams are 8 (name or position) and **both are in scoring form before the match** → **over 3.5 goals**. Example: Man United (8) vs Aston Villa (8), 4-4.
 
 ---
 
@@ -100,6 +102,8 @@ Fulham, Leeds, Newcastle, Brentford (PL). Possible extra 1 vs 9 triggers: Man Ci
 
 | Rule | Bets | Won | Hit rate |
 |---|---|---|---|
-| 1 vs 9 handicap | 4 | 3 won, 1 push, 0 lost | 100% of decided bets (too few to judge) |
+| 1 vs 9 handicap (+1, old) | 4 | 3 won, 1 push | 100% of decided bets |
+| 1 vs 9 handicap (+2, new) | 4 | 4 won (Annecy, Köln, Lazio, Mainz) | 100% (too few to judge) |
+| Double-8 over 3.5 | 1 | 1 (Man Utd–Villa 4-4, form not checked) | – |
 | 8 direction (high/low by form) | 5 | 3 | 60% |
 | 8 "extreme score" pattern | 14 games | 11 extreme | 79% vs 38% baseline |
