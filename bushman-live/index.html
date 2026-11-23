@@ -103,11 +103,15 @@ h2 i{font-style:italic;font-weight:400;color:var(--lime)}
 .fade.in{opacity:1;transform:none}
 
 /* leaf curtain divider (parts on scroll) */
-.curtain{position:relative;height:46vh;min-height:280px;overflow:hidden;background:var(--forest)}
-.curtain .cl,.curtain .cr{position:absolute;top:-10%;bottom:-10%;width:62%;will-change:transform}
-.curtain .cl{left:0}.curtain .cr{right:0}
-.curtain svg{width:100%;height:100%}
-.curtain .through{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--serif);font-style:italic;font-size:clamp(22px,3.4vw,42px);color:var(--cream);padding:0 16px;background:radial-gradient(ellipse at center,#2f6d30 0%,var(--forest) 70%)}
+.curtain{position:relative;height:220vh;background:var(--forest);overflow:clip}
+.curtain .stick{position:sticky;top:0;height:100vh;overflow:hidden}
+.curtain .cl,.curtain .cr{position:absolute;top:-12%;bottom:-12%;width:64%;will-change:transform}
+.curtain .cl{left:0;transform-origin:0% 50%}.curtain .cr{right:0;transform-origin:100% 50%}
+.curtain .cl.back,.curtain .cr.back{filter:brightness(.55);width:60%}
+.curtain svg{width:100%;height:100%;overflow:visible}
+.curtain .through{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font-family:var(--serif);font-style:italic;font-size:clamp(24px,3.6vw,46px);line-height:1.25;color:var(--cream);padding:0 clamp(16px,8vw,120px);background:radial-gradient(ellipse at center,#3a7d36 0%,#1d4a24 40%,var(--forest) 75%)}
+.curtain .through span{display:block;max-width:22ch;margin:0 auto;text-shadow:0 4px 30px rgba(0,0,0,.5);will-change:opacity,transform,filter}
+.curtain .light{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,240,180,.22),transparent 55%);opacity:0}
 
 /* ---- The Problem ---- */
 #truth{background:linear-gradient(180deg,var(--forest),#120d07 120%)}
@@ -472,10 +476,14 @@ for(let i=0;i<26;i++){
 
 /* ---------- Curtains: fronds that part as you scroll ---------- */
 document.querySelectorAll('[data-curtain]').forEach(c=>{
-  const mk=(flip)=>`<svg viewBox="0 0 600 600" preserveAspectRatio="${flip?'xMinYMid':'xMaxYMid'} slice"><g ${flip?'transform="translate(600 0) scale(-1 1)"':''}>
-    ${[...Array(9)].map((_,i)=>`<g transform="translate(-40 ${300+(i-4)*20}) rotate(${(i-4)*14})">${frond(700,(i-4)*25,22,greens[(i+2)%greens.length],52)}</g>`).join('')}</g></svg>`;
-  c.querySelector('.cl').innerHTML=mk(false);
-  c.querySelector('.cr').innerHTML=mk(true);
+  const mk=(flip,seed)=>`<svg viewBox="0 0 600 600" preserveAspectRatio="${flip?'xMinYMid':'xMaxYMid'} slice"><g ${flip?'transform="translate(600 0) scale(-1 1)"':''}>
+    ${[...Array(9)].map((_,i)=>`<g transform="translate(-40 ${300+(i-4)*22}) rotate(${(i-4)*14+seed})"><g class="sway" style="animation-delay:-${(i*0.7).toFixed(1)}s">${frond(720,(i-4)*25,22,greens[(i+2+seed)%greens.length],54)}</g></g>`).join('')}</g></svg>`;
+  const t=c.querySelector('.through');
+  t.innerHTML=`<span>${t.innerHTML}</span>`;
+  c.querySelector('.cl').remove();c.querySelector('.cr').remove();
+  const stick=document.createElement('div');stick.className='stick';
+  stick.innerHTML=`${t.outerHTML}<div class="light"></div><div class="cl back">${mk(false,3)}</div><div class="cr back">${mk(true,3)}</div><div class="cl front">${mk(false,0)}</div><div class="cr front">${mk(true,0)}</div>`;
+  t.remove();c.appendChild(stick);
 });
 
 /* ---------- Enter ---------- */
@@ -508,10 +516,22 @@ function frame(){
   });
   curtains.forEach(c=>{
     const r=c.getBoundingClientRect();
-    const p=Math.min(Math.max((innerHeight-r.top)/(innerHeight+r.height),0),1); // 0..1 through viewport
-    const open=Math.min(Math.max((p-.08)/.3,0),1);
-    c.querySelector('.cl').style.transform=`translateX(${-open*110}%) rotate(${-open*12}deg)`;
-    c.querySelector('.cr').style.transform=`translateX(${open*110}%) rotate(${open*12}deg)`;
+    if(r.bottom<-50||r.top>innerHeight+50)return;
+    // 0 when the section reaches the top, 1 when it is about to unpin
+    const p=Math.min(Math.max(-r.top/(r.height-innerHeight),0),1);
+    const ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+    const o=ease(Math.min(Math.max((p-.05)/.6,0),1));      // front leaves: 5%→65% of the pin
+    const ob=ease(Math.min(Math.max((p-.12)/.6,0),1));     // back leaves trail slightly
+    const front=c.querySelectorAll('.front'),back=c.querySelectorAll('.back');
+    const D=Math.max(innerWidth*.75,innerHeight*1.25); // travel far enough on tall phone screens too
+    front[0].style.transform=`translateX(${-o*D}px) rotate(${-o*16}deg) scale(${1.12-o*.12})`;
+    front[1].style.transform=`translateX(${o*D}px) rotate(${o*16}deg) scale(${1.12-o*.12})`;
+    back[0].style.transform=`translateX(${-ob*D}px) rotate(${-ob*10}deg)`;
+    back[1].style.transform=`translateX(${ob*D}px) rotate(${ob*10}deg)`;
+    const tx=Math.min(Math.max((p-.2)/.45,0),1);
+    const sp=c.querySelector('.through span');
+    sp.style.opacity=tx;sp.style.transform=`scale(${.92+tx*.08}) translateY(${(1-tx)*20}px)`;sp.style.filter=`blur(${(1-tx)*6}px)`;
+    c.querySelector('.light').style.opacity=o;
   });
   nav.classList.toggle('solid',y>60);
   requestAnimationFrame(frame);
