@@ -509,9 +509,9 @@ function frame(){
   curtains.forEach(c=>{
     const r=c.getBoundingClientRect();
     const p=Math.min(Math.max((innerHeight-r.top)/(innerHeight+r.height),0),1); // 0..1 through viewport
-    const open=Math.min(Math.max((p-.15)/.5,0),1);
-    c.querySelector('.cl').style.transform=`translateX(${-open*70}%) rotate(${-open*12}deg)`;
-    c.querySelector('.cr').style.transform=`translateX(${open*70}%) rotate(${open*12}deg)`;
+    const open=Math.min(Math.max((p-.08)/.3,0),1);
+    c.querySelector('.cl').style.transform=`translateX(${-open*110}%) rotate(${-open*12}deg)`;
+    c.querySelector('.cr').style.transform=`translateX(${open*110}%) rotate(${open*12}deg)`;
   });
   nav.classList.toggle('solid',y>60);
   requestAnimationFrame(frame);
