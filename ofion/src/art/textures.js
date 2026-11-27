@@ -14,12 +14,28 @@ for (const [path, url] of Object.entries(FILES)) {
 }
 
 export const ALL_KEYS = ['sky', ...Object.keys(SPRITES)];
+
+/** Frame counts of the optional action strips (null: work it out from the picture's shape). */
+export const STRIPS = {};
+
+/** How many frames an action strip has: from its name, or from its shape (frameAspect = width/height of one frame). */
+export function stripFrames(scene, key, frameAspect) {
+  if (!scene.textures.exists(key)) return 0;
+  if (STRIPS[key]) return STRIPS[key];
+  const src = scene.textures.get(key).getSourceImage();
+  return Math.max(1, Math.round(src.width / (src.height * frameAspect)));
+}
 export const realArt = (key) => Boolean(urls[key]);
 
 export function queueArt(scene) {
   for (const key of ALL_KEYS) if (urls[key]) scene.load.image(key, urls[key]);
   if (urls.player_walk) scene.load.image('player_walk', urls.player_walk);
-  if (urls.player_climb) scene.load.image('player_climb', urls.player_climb); // optional climbing pose
+  // optional action strips: player_climb.png / player_paddle.png, or with the frame count in the
+  // name (player_paddle_6.png). Frames sit side by side in one row.
+  for (const [name, url] of Object.entries(urls)) {
+    const m = name.match(/^(player_(?:climb|paddle))(?:_(\d+))?$/);
+    if (m) { scene.load.image(m[1], url); STRIPS[m[1]] = m[2] ? Number(m[2]) : null; }
+  }
   for (const key of Object.keys(urls)) if (key.startsWith('cut_')) scene.load.image(key, urls[key]); // cutscene paintings
 }
 

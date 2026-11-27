@@ -179,10 +179,16 @@ Attach `player.png` and `portrait_ini.jpg` so the people match.
 
 ---
 
-## Optional: a climbing pose
+## Action strips: real paddling and climbing
 
-Without this, the climb shows the standing `player.png` pressed against the trunk. For a real climbing pose, make `player_climb.png` and attach your `player.png` so the man matches:
+A single picture can't show a real man's movements. The game plays a strip of frames instead, one cycle per stroke or grip, in time with your taps. Make each strip in ChatGPT and attach your finished `player.png` so the man matches. Name the file with its frame count, for example `player_paddle_6.png`.
 
-> Using the attached picture of my character, show the same man in the same style, lighting and clothes, climbing an oil palm: seen from behind and a little to the side, both arms reaching up around an unseen trunk, knees bent and feet braced, a thick loop of twisted raffia rope around his back. Full body, transparent background (a real alpha channel, not a checkerboard). Do not draw the tree. No text.
+**`player_paddle_6.png`** (each frame about square):
 
-Shape it about 1 : 2 (taller than wide). The game stands it against the 3D palm, so leave the right-hand side of his body where the trunk would be.
+> Using the attached picture of my character, make a sprite sheet of the same man, same style, lighting and clothes, kneeling in a dugout canoe and paddling with a single-bladed wooden paddle, seen from the side facing right. 6 frames in one horizontal row, evenly spaced, equal size, one full stroke: 1 reaching forward with the blade raised, 2 blade dipping into the water ahead, 3 pulling back hard with his body twisting, 4 blade passing his hip, 5 lifting the blade out behind, 6 swinging it forward again. Show him from the waist up as if the canoe's side hides his legs; do not draw the canoe or the water. Both hands on the paddle shaft in every frame. Transparent background (a real alpha channel, not a checkerboard). No text.
+
+**`player_climb_6.png`** (each frame about 1 : 2, taller than wide):
+
+> Using the attached picture of my character, make a sprite sheet of the same man, same style, lighting and clothes, climbing an oil palm with a palm-wine tapper's rope loop around his back, seen from behind and slightly to the left. 6 frames in one horizontal row, evenly spaced, equal size, one full climbing move: 1 leaning back in the rope with feet braced, 2 flicking the rope loop higher up the trunk, 3 stepping the right foot up, 4 stepping the left foot up, 5 pulling his body up close to the trunk, 6 leaning back into the rope again. Do not draw the tree; leave the right side of each frame clear where the trunk will be. Transparent background (a real alpha channel, not a checkerboard). No text.
+
+Check that the man looks the same in every frame and the frames line up (same feet height for the paddling strip, same width for each frame). Send me the strip and I'll check and fit it.

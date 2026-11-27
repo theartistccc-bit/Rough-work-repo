@@ -378,11 +378,14 @@ export class World3D {
       const tex = textures.get(a.key);
       const map = this.baseTexture(tex).clone();
       map.needsUpdate = true;
-      if (a.flip) { map.repeat.x = -1; map.offset.x = 1; }
       const src = tex.getSourceImage();
       const h = a.h ?? 1.75;
+      const frames = a.frames ?? 1; // an action strip: one row of frames
+      const crop = a.cropTop ?? 1; // show only the top part of the picture (seated in a canoe)
+      map.repeat.set((a.flip ? -1 : 1) / frames, crop);
+      map.offset.set(a.flip ? 1 / frames : 0, 1 - crop);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.08 }));
-      sp.scale.set((h * src.width) / src.height, h, 1);
+      sp.scale.set((h * src.width) / frames / (src.height * crop), h, 1);
       sp.center.set(0.5, 0);
       sp.position.set(a.x, a.y ?? 0, a.z);
       sp.userData = { ...a, baseY: a.y ?? 0 };
@@ -399,6 +402,60 @@ export class World3D {
     this.props = [];
     this.staging = null;
     this.stageCam = null;
+  }
+
+  /** Show frame i of a staged actor's action strip. */
+  setActorFrame(sp, i) {
+    const n = sp.userData.frames ?? 1;
+    const f = ((i % n) + n) % n;
+    const flip = sp.userData.flip;
+    sp.material.map.offset.x = flip ? (f + 1) / n : f / n;
+  }
+
+  /** A dugout canoe with a paddle, for the river trip. Returns { boat, paddle }. */
+  makeCanoe() {
+    const boat = new THREE.Group();
+    const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 2.2, 4, 8), lam(C.wood));
+    hull.rotation.z = Math.PI / 2;
+    hull.scale.set(0.55, 1, 1);
+    const inside = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.05, 0.38), lam(0x4a2e18));
+    inside.position.y = 0.13;
+    boat.add(hull, inside);
+    const paddle = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.5, 5), lam(0x9a6a3a));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 0.03), lam(0x9a6a3a));
+    blade.position.y = -0.85;
+    paddle.add(shaft, blade);
+    paddle.position.set(0.15, 0.7, 0.3);
+    boat.add(paddle);
+    this.addProp(boat);
+    return { boat, paddle };
+  }
+
+  /** Mangroves along both banks of the creek for the paddle upriver (removed when the trip ends). */
+  makeRiverBanks(fromX, toX) {
+    const leaf = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), lam(C.leaf), 60);
+    const roots = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.05, 0.07, 1.4, 4), lam(0x3a2a1c), 240);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    let r = 0;
+    for (let i = 0; i < 60; i++) {
+      // the far bank only, so nothing stands between the camera and the canoe
+      const x = fromX + ((toX - fromX) * i) / 59 + (i % 3) * 0.3;
+      const z = -0.6 - (i % 4) * 0.7;
+      const s = 0.9 + (i % 5) * 0.15;
+      m.compose(new THREE.Vector3(x, 1.4 * s, z), q, new THREE.Vector3(s * 1.2, s * 0.8, s));
+      leaf.setMatrixAt(i, m);
+      for (let k = 0; k < 4; k++) {
+        const a = k * 1.6 + i;
+        q.setFromEuler(new THREE.Euler(Math.sin(a) * 0.4, 0, Math.cos(a) * 0.45));
+        m.compose(new THREE.Vector3(x + Math.cos(a) * 0.45 * s, 0.45 * s, z + Math.sin(a) * 0.45 * s), q, new THREE.Vector3(1, s, 1));
+        roots.setMatrixAt(r++, m);
+      }
+      q.identity();
+    }
+    this.addProp(leaf);
+    this.addProp(roots);
   }
 
   /** The tapper's climbing rope: a loop of twisted fibre round the trunk. */

@@ -9,6 +9,7 @@ import { store } from '../store.js';
 import { PLACES } from '../world.js';
 import { LANES, toWorldX } from '../world3d/layout.js';
 import { climbCamera } from '../world3d/shots.js';
+import { stripFrames } from '../art/textures.js';
 
 const LIMIT_MS = 12000;
 const TRUNK_X = 480;
@@ -101,11 +102,15 @@ export default class Climb extends MiniBase {
     this.px = toWorldX(PLACES.palms[this.data_.palm]);
     this.pz = LANES.palms;
     this.topY = 4.4 * 1.15 - 1.75 - 0.1; // feet height when the hands reach the crown
+    this.gripT = 1; // 0..1 through the current grip's motion
+    this.climbFrames = stripFrames(this, 'player_climb', 0.5);
     [this.climber] = w.stage(this.textures, {
       minute: store.g.clock.minute,
       cam: { from: [[0, 0, 0], [0, 0, 0]] },
-      // a climbing pose picture if one was supplied, otherwise the standing picture
-      actors: [{ key: this.textures.exists('player_climb') ? 'player_climb' : 'player', x: this.px, z: this.pz + 0.3 }],
+      // a climbing strip if one was supplied (frames ~1:2), otherwise the standing picture
+      actors: [this.climbFrames
+        ? { key: 'player_climb', x: this.px, z: this.pz + 0.3, frames: this.climbFrames }
+        : { key: 'player', x: this.px, z: this.pz + 0.3 }],
     });
     this.rope = w.makeRope(0.5); // loops round the trunk and the climber's back
     this.events.once('shutdown', () => w.unstage());
@@ -127,6 +132,10 @@ export default class Climb extends MiniBase {
     if (!this.finished) this.t += dt;
     this.shown += (this.c.progress - this.shown) * 0.12;
     this.reach *= 0.86;
+    if (this.climbFrames) {
+      this.gripT = Math.min(1, this.gripT + dt / 320);
+      this.w3d.setActorFrame(this.climber, Math.floor(this.gripT * (this.climbFrames - 1)));
+    }
     this.sway *= 0.9;
     this.shake *= 0.85;
     const y = this.shown * this.topY;
@@ -167,6 +176,8 @@ export default class Climb extends MiniBase {
     } else {
       this.reach = 1;
       this.sway = side;
+      this.gripT = 0; // play the strip through once for this grip
+      this.gripSide = side;
     }
   }
 }
