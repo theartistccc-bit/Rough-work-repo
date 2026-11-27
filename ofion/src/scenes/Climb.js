@@ -10,6 +10,8 @@ import { PLACES } from '../world.js';
 import { LANES, toWorldX } from '../world3d/layout.js';
 import { climbCamera } from '../world3d/shots.js';
 import { stripFrames } from '../art/textures.js';
+import { armActors, makeArmRig } from '../art/armRig.js';
+import { climbArms } from '../art/arms.js';
 
 const LIMIT_MS = 12000;
 const TRUNK_X = 480;
@@ -104,14 +106,17 @@ export default class Climb extends MiniBase {
     this.topY = 4.4 * 1.15 - 1.75 - 0.1; // feet height when the hands reach the crown
     this.gripT = 1; // 0..1 through the current grip's motion
     this.climbFrames = stripFrames(this, 'player_climb', 0.5);
-    [this.climber] = w.stage(this.textures, {
+    // a climbing strip if one was supplied (frames ~1:2); otherwise the player picture with movable arms
+    if (!this.climbFrames) this.arms = armActors(makeArmRig(this), { x: this.px, z: this.pz + 0.12 });
+    this.pieces = w.stage(this.textures, {
       minute: store.g.clock.minute,
       cam: { from: [[0, 0, 0], [0, 0, 0]] },
-      // a climbing strip if one was supplied (frames ~1:2), otherwise the standing picture
-      actors: [this.climbFrames
-        ? { key: 'player_climb', x: this.px, z: this.pz + 0.3, frames: this.climbFrames }
-        : { key: 'player', x: this.px, z: this.pz + 0.3 }],
+      actors: this.climbFrames
+        ? [{ key: 'player_climb', x: this.px, z: this.pz + 0.3, frames: this.climbFrames }]
+        : this.arms.defs,
     });
+    this.climber = this.climbFrames ? this.pieces[0] : this.pieces[1];
+    this.gripSide = 1;
     this.rope = w.makeRope(0.5); // loops round the trunk and the climber's back
     this.events.once('shutdown', () => w.unstage());
     // progress and time, small and out of the way
@@ -132,17 +137,24 @@ export default class Climb extends MiniBase {
     if (!this.finished) this.t += dt;
     this.shown += (this.c.progress - this.shown) * 0.12;
     this.reach *= 0.86;
-    if (this.climbFrames) {
-      this.gripT = Math.min(1, this.gripT + dt / 320);
-      this.w3d.setActorFrame(this.climber, Math.floor(this.gripT * (this.climbFrames - 1)));
-    }
+    this.gripT = Math.min(1, this.gripT + dt / 320);
+    if (this.climbFrames) this.w3d.setActorFrame(this.climber, Math.floor(this.gripT * (this.climbFrames - 1)));
     this.sway *= 0.9;
     this.shake *= 0.85;
     const y = this.shown * this.topY;
     // the climber hugs the trunk, reaching up with each grip; the rope rides at the waist
     // he presses against the side of the trunk, leaning in, so the trunk stays in sight beside him
-    this.climber.position.set(this.px + 0.52 + this.sway * 0.04, y + this.reach * 0.14, this.pz + 0.12);
-    this.climber.material.rotation = 0.12 + this.sway * 0.06;
+    const bx = this.px + 0.52 + this.sway * 0.04;
+    const by = y + this.reach * 0.14;
+    if (this.arms) {
+      // hand over hand: one arm stretches up the trunk while the other pulls down, swapping each grip
+      const a = climbArms(this.gripT, this.gripSide);
+      const rad = Math.PI / 180;
+      this.arms.place(this.pieces, bx, by, this.pz + 0.12, -a.left * rad, a.right * rad, 0.1 + this.sway * 0.05);
+    } else {
+      this.climber.position.set(bx, by, this.pz + 0.12);
+      this.climber.material.rotation = 0.12 + this.sway * 0.06;
+    }
     this.rope.position.set(this.px + 0.26, y + 0.95 + this.reach * 0.06, this.pz + 0.06);
     const cam = climbCamera(this.px, this.pz, y, this.shown);
     const j = this.shake * 0.08;

@@ -386,7 +386,7 @@ export class World3D {
       map.offset.set(a.flip ? 1 / frames : 0, 1 - crop);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.08 }));
       sp.scale.set((h * src.width) / frames / (src.height * crop), h, 1);
-      sp.center.set(0.5, 0);
+      sp.center.set(a.cx ?? 0.5, a.cy ?? 0); // a pivot inside the picture (a shoulder), or the feet
       sp.position.set(a.x, a.y ?? 0, a.z);
       sp.userData = { ...a, baseY: a.y ?? 0 };
       this.scene.add(sp);

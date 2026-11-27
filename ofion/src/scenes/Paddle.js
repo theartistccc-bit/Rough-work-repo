@@ -7,6 +7,8 @@ import { sfx } from '../audio.js';
 import { STAGE, burst, ensureFx, skyPanel, stageMask } from './fx.js';
 import { store } from '../store.js';
 import { stripFrames } from '../art/textures.js';
+import { armActors, makeArmRig } from '../art/armRig.js';
+import { paddleArms } from '../art/arms.js';
 
 const WATER_Y = STAGE.y + 140;
 
@@ -80,13 +82,16 @@ export default class Paddle extends MiniBase {
     this.z = 2.6; // out on open water, clear of the jetty
     this.frames = stripFrames(this, 'player_paddle', 1); // a paddling strip, frames about square
     const facingLeft = this.x1 < this.x0;
-    [this.rower] = w.stage(this.textures, {
+    // a paddling strip if one was supplied; otherwise the player, seated (waist up), with movable arms
+    if (!this.frames) this.arms = armActors(makeArmRig(this), { x: this.x0, z: this.z, h: 1.02, cropTop: 0.58, flip: facingLeft });
+    this.pieces = w.stage(this.textures, {
       minute: store.g.clock.minute,
       cam: { from: [[0, 0, 0], [0, 0, 0]] },
-      actors: [this.frames
-        ? { key: 'player_paddle', x: this.x0, z: this.z, h: 1.25, frames: this.frames, flip: facingLeft }
-        : { key: 'player', x: this.x0, z: this.z, h: 1.02, cropTop: 0.58, flip: facingLeft }], // seated: waist up shows above the hull
+      actors: this.frames
+        ? [{ key: 'player_paddle', x: this.x0, z: this.z, h: 1.25, frames: this.frames, flip: facingLeft }]
+        : this.arms.defs,
     });
+    this.rower = this.frames ? this.pieces[0] : this.pieces[1];
     w.makeRiverBanks(-16, 5);
     ({ boat: this.boat, paddle: this.paddleMesh } = w.makeCanoe());
     this.events.once('shutdown', () => w.unstage());
@@ -108,16 +113,28 @@ export default class Paddle extends MiniBase {
     this.boat.position.set(x, -0.04 + bob, this.z);
     this.boat.rotation.y = this.swing * 0.25; // the canoe swings when you stroke the same side twice
     this.boat.rotation.z = Math.sin(time / 600) * 0.02;
-    this.rower.position.set(x, 0.1 + bob, this.z + 0.02);
+    const by = 0.1 + bob;
     // one paddle stroke: reach forward, dip, pull back past the hip, lift out
     this.strokeT = Math.min(1, this.strokeT + dt / 520);
     const t = this.strokeT;
     const ahead = this.x1 < this.x0 ? -1 : 1; // the way the canoe travels along x
     const pull = t < 1 ? Math.sin(t * Math.PI) : 0; // blade in the water mid-stroke
-    this.paddleMesh.position.set(ahead * (0.35 - t * 0.7), 0.75 - pull * 0.25, this.side * 0.34);
-    this.paddleMesh.rotation.set(this.side * 0.25, 0, ahead * (0.55 - t * 1.0));
-    if (this.frames) this.w3d.setActorFrame(this.rower, Math.min(this.frames - 1, Math.floor(t * this.frames)));
-    else this.rower.material.rotation = -ahead * (0.08 - t * 0.14) * (t < 1 ? 1 : 0); // lean into the pull
+    const tilt = ahead * (0.55 - t * 1.0);
+    this.paddleMesh.rotation.set(this.side * 0.25, 0, tilt);
+    if (this.frames) {
+      this.rower.position.set(x, by, this.z + 0.02);
+      this.w3d.setActorFrame(this.rower, Math.min(this.frames - 1, Math.floor(t * this.frames)));
+      this.paddleMesh.position.set(ahead * (0.35 - t * 0.7), 0.75 - pull * 0.25, this.side * 0.34);
+    } else {
+      // both arms reach forward, pull back past the hip and recover; the top hand rides higher
+      const a = paddleArms(t);
+      const rad = (Math.PI / 180) * ahead;
+      const lean = -ahead * (0.08 - t * 0.14) * (t < 1 ? 1 : 0);
+      this.arms.place(this.pieces, x, by, this.z + 0.02, a.top * rad, a.bottom * rad, lean);
+      // the paddle follows the lower hand, the shaft running up through it
+      const [hx, hy] = this.arms.hand('right', x, by, a.bottom * rad);
+      this.paddleMesh.position.set(hx - x - Math.sin(-tilt) * 0.3, hy - (-0.04 + bob) - Math.cos(tilt) * 0.3, this.side * 0.34);
+    }
     // the camera rides alongside, a little ahead
     this.w3d.stageCam = { pos: [x + ahead * 1.2, 1.55, this.z + 5.2], look: [x + ahead * 0.6, 0.55, this.z - 0.4] };
     this.bar.width = 600 * this.p.dist;
