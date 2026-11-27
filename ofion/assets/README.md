@@ -1,5 +1,7 @@
 # Art goes here
 
+ChatGPT prompts for every picture are in `PROMPTS.md`.
+
 Drop a picture named after a sprite key and it replaces the placeholder, with no code change.
 Restart `npm run dev` (or rebuild) after adding a new file.
 
