@@ -40,6 +40,14 @@ See `assets/README.md`. Drop `assets/<key>.png` (for example `hut.png`) and it r
 - `npm run shots`: builds, plays through every scene in headless Chromium, and saves screenshots to `screenshots/latest`.
 - `npm run perf`: load time on throttled 3G and fps with the CPU slowed 6× (an emulation, see below).
 
+## 3D village
+
+The village is drawn in 3D with three.js (`src/world3d/`): low-poly houses, palms, creek, sky, sun, moon and firelight. People are the game's own pictures standing as cut-outs that face the camera. Each mirrors a hidden Phaser image, so walking, dancing, tints and visibility come from the same code as before. The HUD, menus, minigames and cutscenes are Phaser, drawn on top.
+
+- The 3D engine (about 140 KB compressed) loads in the background during the title screen, so the title still appears fast.
+- Still scenery is merged into about a dozen meshes, one per colour, to keep draw calls low on cheap phones.
+- Add `?2d` to the address to play the old 2D village. The game also falls back to 2D by itself if 3D can't start.
+
 ## Performance notes
 
 - Bundle: about 361 KB gzipped (mostly Phaser). Placeholder art is painted at boot, so there are no image downloads.

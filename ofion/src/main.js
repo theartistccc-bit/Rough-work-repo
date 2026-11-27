@@ -23,7 +23,7 @@ const game = new Phaser.Game({
   parent: 'game',
   width: VIEW.w,
   height: VIEW.h,
-  backgroundColor: '#2a1a10',
+  transparent: true, // the 3D village is drawn underneath
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   render: { antialias: true, powerPreference: 'low-power', batchSize: 2048 },
   fps: { target: 60, smoothStep: true },
@@ -33,6 +33,10 @@ const game = new Phaser.Game({
   scene: [Boot, Title, Village, Hud, Fishing, Climb, Wrestle, Plait, Contest, Periwinkle, Pound, Soup, Paddle, Upriver, Cutscene],
 });
 
-window.__ofion = { game, store, audio }; // used by the screenshot, perf and sound scripts
+window.__ofion = { game, store, audio };
+// The 3D engine loads in the background while the title screen shows, so start-up stays fast.
+store.world3dReady = import('./world3d/World3D.js')
+  .then((m) => { store.World3D = m.World3D; })
+  .catch(() => { /* no 3D: the 2D village is drawn instead */ }); // used by the screenshot, perf and sound scripts
 // browsers start sound only after the player touches or presses something
 for (const ev of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(ev, audio.unlock, { passive: true });

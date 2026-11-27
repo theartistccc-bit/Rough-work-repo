@@ -18,6 +18,7 @@ import { canCook, cookSoup, eatSoup, poundGain, shareSoup, upriverOpen } from '.
 import { ensureCrowd, ensureFx } from './fx.js';
 import * as audio from '../audio.js';
 import { STRIDE_PX, findLegs, gaitPose } from '../art/rig.js';
+import { LANES } from '../world3d/layout.js';
 
 const h = (hh, mm = 0) => hh * 60 + mm;
 const label = (good) => GOODS[good].label;
@@ -38,6 +39,7 @@ export default class Village extends Phaser.Scene {
     this.phase = 0;
     this.gait = 0; // 0 standing .. 1 walking, eased so starts and stops are smooth
     this.rig = this.hasWalk ? null : this.buildRig();
+    this.setup3D();
     ensureFx(this);
     this.dust = this.add.particles(0, 0, 'fx_dust', {
       emitting: false, speed: { min: 10, max: 40 }, angle: { min: 200, max: 340 }, lifespan: 450,
@@ -163,6 +165,7 @@ export default class Village extends Phaser.Scene {
     this.far.tilePositionX = this.cameras.main.scrollX * 0.3 / this.far.tileScaleX;
     this.updateLight(time);
     this.updatePeople();
+    this.w3d?.update(this.player.x, g.clock.minute, time);
     this.current = store.dialog || store.minigame ? null : this.nearest();
     this.hud.setPrompt(this.current ? `● ${this.current.label}` : '');
   }
@@ -748,5 +751,39 @@ export default class Village extends Phaser.Scene {
     };
     this.scene.launch('Upriver', { onTrade: (id, back) => this.barterMenu(id, back), onLeave: leave });
     this.scene.bringToTop('Hud');
+  }
+
+  // ---------------------------------------------------------------- 3D village
+  /** Draw the village in 3D underneath: hide this scene's 2D drawing, mirror the people as cut-outs. */
+  setup3D() {
+    if (!store.World3D || /[?&]2d/.test(location.search)) return;
+    try {
+      this.w3d = store.w3d ??= new store.World3D();
+    } catch {
+      return; // no WebGL for a second canvas: keep the 2D village
+    }
+    this.cameras.main.setVisible(false);
+    this.w3d.show(true);
+    this.events.once('shutdown', () => this.w3d.show(false));
+    const lane = (id) => {
+      if (id in PLACES.traders) return LANES.traders;
+      if (id === 'elder') return LANES.elder;
+      if (id.startsWith('judge')) return LANES.judges;
+      if (id.startsWith('w')) return LANES.wrestlers;
+      if (id.startsWith('r')) return LANES.rivals;
+      if (id === 'ini') return LANES.ini;
+      return LANES.path;
+    };
+    for (const [id, img] of Object.entries(this.npc)) this.w3d.bind(img, { z: lane(id), shadow: true });
+    for (const d of this.drummers) this.w3d.bind(d, { z: LANES.drummers, shadow: true });
+    this.w3d.bind(this.festCrowd, { z: LANES.crowd });
+    const at = () => this.player.x;
+    if (this.rig) {
+      this.w3d.bind(this.rig.legL, { z: LANES.player - 0.01, anchor: at });
+      this.w3d.bind(this.rig.legR, { z: LANES.player - 0.01, anchor: at });
+      this.w3d.bind(this.rig.upper, { z: LANES.player, anchor: at, shadow: true });
+    } else {
+      this.w3d.bind(this.player, { z: LANES.player, shadow: true });
+    }
   }
 }

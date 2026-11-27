@@ -19,9 +19,13 @@ export default class Title extends Phaser.Scene {
     text(this, 480, 190, 'A life on the Calabar creeks', 22, '#f0c070', { stroke: '#3a2414', strokeThickness: 4 }).setOrigin(0.5);
 
     const saved = loadSave();
-    const start = (g) => {
+    const start = async (g) => {
+      if (this.starting) return;
+      this.starting = true;
       store.g = g;
       this.input.keyboard.off('keydown');
+      // wait (briefly) for the 3D village to finish loading; fall back to 2D if it is slow
+      await Promise.race([store.world3dReady, new Promise((r) => setTimeout(r, 6000))]);
       this.scene.start('Village');
     };
     const y = 260;

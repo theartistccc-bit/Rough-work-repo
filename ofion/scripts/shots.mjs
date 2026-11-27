@@ -25,7 +25,9 @@ const goto = async (x, minute, day) => {
   await set(([x, minute, day]) => {
     const { game, store } = window.__ofion;
     game.scene.getScene('Hud').closeDialog();
-    for (const k of ['Fishing', 'Climb', 'Wrestle', 'Plait', 'Contest']) game.scene.stop(k);
+    for (const k of ['Fishing', 'Climb', 'Wrestle', 'Plait', 'Contest', 'Cutscene', 'Periwinkle', 'Pound', 'Soup', 'Paddle', 'Upriver']) game.scene.stop(k);
+    game.scene.getScene('Hud').sys.setVisible(true);
+    store.g.story.prologueSeen = true;
     store.minigame = false;
     if (minute != null) store.g.clock.minute = minute;
     if (day != null) store.g.clock.day = day;
@@ -87,7 +89,9 @@ await shot('12-festival');
 await key('KeyE');
 await shot('13-contest-choose');
 await key('Digit2');
-await wait(400);
+await wait(600);
+await key('Escape'); // skip the festival-opening cutscene
+await wait(600);
 await key('ArrowLeft'); await key('ArrowRight'); await key('Space');
 await shot('14-plait');
 for (let i = 0; i < 9; i++) await key('Space');
