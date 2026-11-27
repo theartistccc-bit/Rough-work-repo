@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { save, store } from '../store.js';
 import { place, strip } from '../art/textures.js';
 import { baked } from '../ui.js';
+import { ensureFx } from './fx.js';
 import { GROUND_Y, PLACES, REACH, VIEW, WALK_SPEED, WORLD_W } from '../world.js';
 import { BARTER, CONTEST, COURTSHIP, GOODS, HUNGER, TALES, TIME, WRESTLE } from '../logic/config.js';
 import {
@@ -31,6 +32,12 @@ export default class Village extends Phaser.Scene {
     this.lit.push(this.player);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12, 0, 40);
     this.walkT = 0;
+    this.hasWalk = this.anims.exists('walk');
+    ensureFx(this);
+    this.dust = this.add.particles(0, 0, 'fx_dust', {
+      emitting: false, speed: { min: 10, max: 40 }, angle: { min: 200, max: 340 }, lifespan: 450,
+      scale: { start: 0.5, end: 0.1 }, alpha: { start: 0.6, end: 0 },
+    }).setDepth(6.5);
     this.lastDay = store.g.clock.day;
     this.warnedStarving = false;
     this.onPress = (name) => this.handlePress(name);
@@ -108,9 +115,11 @@ export default class Village extends Phaser.Scene {
         const v = WALK_SPEED * speedFactor(g.fullness) * dir;
         this.player.x = Phaser.Math.Clamp(this.player.x + (v * dt) / 1000, 200, WORLD_W - 60);
         this.player.setFlipX(dir < 0);
+        const before = Math.sin(this.walkT / 110);
         this.walkT += dt;
+        if (Math.sign(before) !== Math.sign(Math.sin(this.walkT / 110))) this.dust.explode(3, this.player.x - dir * 6, GROUND_Y); // a footfall
       } else this.walkT = 0;
-      this.player.y = GROUND_Y - Math.abs(Math.sin(this.walkT / 110)) * 4;
+      this.animateWalk(dir !== 0);
       if (tick(g, dt, { walking: dir !== 0 })) this.announceDay();
       if (status(g.fullness) === 'starving' && !this.warnedStarving) {
         this.warnedStarving = true;
@@ -135,6 +144,20 @@ export default class Village extends Phaser.Scene {
     this.updatePeople();
     this.current = store.dialog || store.minigame ? null : this.nearest();
     this.hud.setPrompt(this.current ? `● ${this.current.label}` : '');
+  }
+
+  /** A real walk cycle if one was supplied, otherwise a step-bob and sway on the still picture. */
+  animateWalk(walking) {
+    const p = this.player;
+    if (this.hasWalk) {
+      if (walking && p.anims?.currentAnim?.key !== 'walk') p.play('walk').setDisplaySize(44, 92);
+      if (!walking && p.texture.key !== 'player') p.stop().setTexture('player').setDisplaySize(44, 92);
+      p.y = GROUND_Y;
+      return;
+    }
+    const s = Math.sin(this.walkT / 110);
+    p.y = GROUND_Y - Math.abs(s) * 4;
+    p.setAngle(walking ? s * 2.5 : 0);
   }
 
   updateLight(time) {

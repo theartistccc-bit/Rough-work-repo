@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { paintMissing, queueArt } from '../art/textures.js';
+import { makeWalk, paintMissing, queueArt } from '../art/textures.js';
 
 export default class Boot extends Phaser.Scene {
   constructor() { super('Boot'); }
@@ -10,6 +10,7 @@ export default class Boot extends Phaser.Scene {
 
   create() {
     paintMissing(this);
+    makeWalk(this);
     document.getElementById('loading')?.remove();
     this.scene.start('Title');
   }

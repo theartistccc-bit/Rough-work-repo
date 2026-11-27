@@ -18,6 +18,23 @@ export const realArt = (key) => Boolean(urls[key]);
 
 export function queueArt(scene) {
   for (const key of ALL_KEYS) if (urls[key]) scene.load.image(key, urls[key]);
+  if (urls.player_walk) scene.load.image('player_walk', urls.player_walk);
+}
+
+/**
+ * An optional walk cycle: ./assets/player_walk.png, frames side by side in one row,
+ * each frame the same shape as the player sprite (44:92). The frame count is worked out
+ * from the picture's width, so any number of frames works.
+ */
+export function makeWalk(scene) {
+  if (!scene.textures.exists('player_walk')) return false;
+  const tex = scene.textures.get('player_walk');
+  const src = tex.getSourceImage();
+  const fw = Math.round((src.height * SPRITES.player.w) / SPRITES.player.h);
+  const n = Math.max(1, Math.round(src.width / fw));
+  for (let i = 0; i < n; i++) tex.add(i, 0, i * fw, 0, fw, src.height);
+  scene.anims.create({ key: 'walk', frames: Array.from({ length: n }, (_, i) => ({ key: 'player_walk', frame: i })), frameRate: 10, repeat: -1 });
+  return true;
 }
 
 export function paintMissing(scene) {

@@ -138,3 +138,13 @@ All icons: crop to a square, save at 64×64.
 | `icon_camwood.png` | A small block of red camwood with a little pile of red powder beside it. |
 | `icon_comb.png` | A carved wooden comb with long teeth. |
 | `icon_pot.png` | A round terracotta clay pot with a short neck and a simple incised band. |
+
+---
+
+## Optional: a walk cycle for the player
+
+The game animates a still `player.png` with a step and a sway. For real walking legs, make `player_walk.png`: several frames of the same fisherman side by side in **one row**. The game counts the frames from the width.
+
+> Using the attached picture of my character, make a walk-cycle sprite sheet: 6 frames in one horizontal row, the same man in the same style, lighting and clothes, walking to the right, full body, feet on the same baseline in every frame, evenly spaced, each frame the same size, transparent background (a real alpha channel, not a checkerboard). No text.
+
+Attach your finished `player.png` to that message. Each frame should be shaped 44 : 92, like the player sprite. Send me the result and I'll fit and check it.

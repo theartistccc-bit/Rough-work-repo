@@ -21,6 +21,7 @@ await cdp.send('Network.emulateNetworkConditions', {
 await cdp.send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.CPU ?? 6) });
 
 const t0 = Date.now();
+if (process.env.DIALOG) await page.addInitScript(() => { window.__keepDialog = true; });
 await page.goto(`http://localhost:${PORT}/`);
 await page.waitForFunction(() => window.__ofion?.game.scene.isActive('Title'), null, { timeout: 30000 });
 const loadMs = Date.now() - t0;
@@ -28,7 +29,9 @@ const loadMs = Date.now() - t0;
 await page.evaluate(() => window.__ofion.game.scene.getScene('Title').input.keyboard.emit('keydown', { code: 'Enter' }));
 await page.waitForFunction(() => window.__ofion.game.scene.isActive('Village'));
 await page.evaluate(() => {
-  const { store } = window.__ofion;
+  const { store, game } = window.__ofion;
+  store.g.story.prologueSeen = true;
+  if (!window.__keepDialog) game.scene.getScene('Hud').closeDialog(); // measure gameplay, not the opening story dialog
   store.g.clock.minute = 21 * 60; // night: the heaviest scene (fire glow, overlays, all NPCs)
   store.held.right = true;
 });
