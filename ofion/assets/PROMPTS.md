@@ -176,3 +176,13 @@ Attach `player.png` and `portrait_ini.jpg` so the people match.
 | `cut_fire.png` | Night in the village square: an elder telling a story by a fire, faces lit warm orange; Ini on the far side of the fire glancing across at the fisherman. |
 | `cut_festival.png` | The festival opening in daylight: drummers seated with skin drums, a crowd clapping, three maidens with tall sculpted festival hairstyles dancing in, Ini stepping in last with plain hair. |
 | `cut_jetty.png` | Night: the fisherman and Ini sitting side by side on the end of the jetty, a full moon above and its reflection on the water, calm and happy. |
+
+---
+
+## Optional: a climbing pose
+
+Without this, the climb shows the standing `player.png` pressed against the trunk. For a real climbing pose, make `player_climb.png` and attach your `player.png` so the man matches:
+
+> Using the attached picture of my character, show the same man in the same style, lighting and clothes, climbing an oil palm: seen from behind and a little to the side, both arms reaching up around an unseen trunk, knees bent and feet braced, a thick loop of twisted raffia rope around his back. Full body, transparent background (a real alpha channel, not a checkerboard). Do not draw the tree. No text.
+
+Shape it about 1 : 2 (taller than wide). The game stands it against the 3D palm, so leave the right-hand side of his body where the trunk would be.

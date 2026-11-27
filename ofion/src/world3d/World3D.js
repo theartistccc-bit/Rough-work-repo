@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { PLACES, WORLD_W } from '../world.js';
 import { lightLevel, phaseAt } from '../logic/dayCycle.js';
-import { LANES, PERSON_SCALE, cameraFor, skyAt, sunPosition, toWorldX, toWorldY } from './layout.js';
+import { LANES, PERSON_SCALE, cameraFor, mixHex, skyAt, sunPosition, toWorldX, toWorldY } from './layout.js';
 
 const C = {
   earth: 0xa8784a, sand: 0xd9b27a, mud: 0xb07a4a, mudLight: 0xc49060, thatch: 0xa07c3c, thatchDark: 0x7a5a2a,
@@ -231,11 +231,14 @@ export class World3D {
       f.scale.z = 0.25;
       g.add(f);
     }
-    const fruit = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22 * k), lam(C.coral));
-    fruit.position.set(0.15, h - 0.25, 0.15);
-    g.add(fruit);
+    // a bunch of small red-orange fruit tucked under the crown
+    for (const [fx, fy, fz] of [[0.14, -0.28, 0.12], [0.22, -0.36, 0.02], [0.08, -0.38, 0.2], [0.18, -0.2, 0.2]]) {
+      const fruit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.075 * k, 1), lam(fx > 0.15 ? C.coral : 0xa83a1a));
+      fruit.position.set(fx * k, h + fy * k, fz * k);
+      g.add(fruit);
+    }
     if (gourd) {
-      const gd = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 6), lam(C.ochre));
+      const gd = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), lam(C.ochre));
       gd.position.set(-0.22, h - 0.7, 0.1);
       g.add(gd);
     }
@@ -361,12 +364,92 @@ export class World3D {
   }
 
   // ------------------------------------------------------------------ per frame
+  // ------------------------------------------------------------------ staged shots (cutscenes, climbing)
+  /**
+   * Take over the camera, clock and cast for a filmed moment in the village.
+   * shot: { minute, cam: { from:[pos,look], to:[pos,look] }, ms, moon?:[x,y,z], tint?, actors:[{ key, x, z, y?, h?, flip?, dance? }] }
+   * Returns the actor sprites so a caller (the climb) can move them.
+   */
+  stage(textures, shot) {
+    this.unstage();
+    this.staging = shot;
+    this.stageT0 = performance.now();
+    this.actors = (shot.actors ?? []).map((a) => {
+      const tex = textures.get(a.key);
+      const map = this.baseTexture(tex).clone();
+      map.needsUpdate = true;
+      if (a.flip) { map.repeat.x = -1; map.offset.x = 1; }
+      const src = tex.getSourceImage();
+      const h = a.h ?? 1.75;
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.08 }));
+      sp.scale.set((h * src.width) / src.height, h, 1);
+      sp.center.set(0.5, 0);
+      sp.position.set(a.x, a.y ?? 0, a.z);
+      sp.userData = { ...a, baseY: a.y ?? 0 };
+      this.scene.add(sp);
+      return sp;
+    });
+    return this.actors;
+  }
+
+  unstage() {
+    for (const sp of this.actors ?? []) { sp.removeFromParent(); sp.material.map.dispose(); sp.material.dispose(); }
+    for (const p of this.props ?? []) p.removeFromParent();
+    this.actors = [];
+    this.props = [];
+    this.staging = null;
+    this.stageCam = null;
+  }
+
+  /** The tapper's climbing rope: a loop of twisted fibre round the trunk. */
+  makeRope(radius = 0.27) {
+    const rope = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.035, 6, 18), lam(0xb08a4a));
+    rope.rotation.x = Math.PI / 2 - 0.25; // tilted: higher at the back of the trunk
+    return this.addProp(rope);
+  }
+
+  /** A temporary object for a staged moment (the climbing rope). */
+  addProp(mesh) {
+    this.props.push(mesh);
+    this.scene.add(mesh);
+    return mesh;
+  }
+
   update(playerPx, minute, timeMs) {
     if (!this.active) return;
-    const target = cameraFor(playerPx);
-    this.camX += (target.pos[0] - this.camX) * 0.08;
-    this.camera.position.set(this.camX, target.pos[1], target.pos[2]);
-    this.camera.lookAt(this.camX, target.look[1], target.look[2]);
+    const shot = this.staging;
+    if (shot) {
+      // a slow, eased camera move through the shot (or a camera set each frame by the caller)
+      minute = shot.minute ?? minute;
+      let pos; let look;
+      if (this.stageCam) ({ pos, look } = this.stageCam);
+      else {
+        const t = Math.min(1, (performance.now() - this.stageT0) / (shot.ms ?? 9000));
+        const e = t * t * (3 - 2 * t);
+        const [p0, l0] = shot.cam.from;
+        const [p1, l1] = shot.cam.to ?? shot.cam.from;
+        pos = p0.map((v, i) => v + (p1[i] - v) * e);
+        look = l0.map((v, i) => v + (l1[i] - v) * e);
+      }
+      this.camX = pos[0];
+      this.camera.position.set(...pos);
+      this.camera.lookAt(...look);
+      const night = skyAt(lightLevel(minute)).night;
+      const tint = shot.tint ?? mixHex(0xffffff, 0x7c86b8, night);
+      for (const sp of this.actors) {
+        sp.material.color.setHex(tint);
+        if (sp.userData.dance) {
+          const k = sp.userData.dance;
+          sp.position.y = sp.userData.baseY + Math.abs(Math.sin(timeMs / 260 + k)) * 0.08;
+          sp.material.rotation = Math.sin(timeMs / 300 + k) * 0.06;
+        }
+      }
+    } else {
+      const target = cameraFor(playerPx);
+      this.camX += (target.pos[0] - this.camX) * 0.08;
+      this.camera.position.set(this.camX, target.pos[1], target.pos[2]);
+      this.camera.lookAt(this.camX, target.look[1], target.look[2]);
+    }
 
     const light = lightLevel(minute);
     const s = skyAt(light);
@@ -380,7 +463,8 @@ export class World3D {
     this.sun.position.set(sx, Math.max(sy, 1), sz);
     this.sun.target.position.set(this.camX, 0, -2);
     this.moon.visible = s.night > 0.05;
-    this.moon.position.set(this.camX + 9, 11, -40);
+    if (shot?.moon) this.moon.position.set(...shot.moon);
+    else this.moon.position.set(this.camX + 9, 11, -40);
     this.stars.material.opacity = s.night;
     this.stars.position.x = this.camX;
     const fireOn = ['night', 'dusk'].includes(phaseAt(minute));
@@ -389,7 +473,10 @@ export class World3D {
     this.flame.scale.y = 1 + Math.sin(timeMs / 70) * 0.12;
     this.waterTex.offset.x = (timeMs / 40000) % 1;
 
-    for (const b of this.bindings) this.syncBinding(b);
+    for (const b of this.bindings) {
+      if (shot) { b.sprite.visible = false; if (b.blob) b.blob.visible = false; } // the cast of a shot replaces the villagers
+      else this.syncBinding(b);
+    }
     this.renderer.render(this.scene, this.camera);
   }
 }

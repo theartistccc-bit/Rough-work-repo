@@ -490,7 +490,7 @@ export default class Village extends Phaser.Scene {
     if (ph === 'night') return this.hud.toast('Too dark to climb. Come back in daylight.');
     if (!canDo('climb', g.fullness)) return this.hud.toast('You are too weak with hunger to climb.');
     g.fullness = spend('climb', g.fullness);
-    this.runMinigame('Climb', {}, (r) => {
+    this.runMinigame('Climb', { palm: i }, (r) => {
       passMinutes(g, 30);
       if (r.done) {
         g.treesTapped.push(i);

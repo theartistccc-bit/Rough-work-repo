@@ -3,6 +3,8 @@ import { panel, text } from '../ui.js';
 import { place, strip } from '../art/textures.js';
 import { sfx } from '../audio.js';
 import { ensureCrowd } from './fx.js';
+import { store } from '../store.js';
+import { SHOTS_3D } from '../world3d/shots.js';
 
 // Full-screen story moments. Each shot is staged from the game's own pictures, or, if
 // ./assets/cut_<shot>.png (960x540) exists, that painting is shown instead.
@@ -89,6 +91,8 @@ export default class Cutscene extends Phaser.Scene {
   init(data) {
     this.data_ = data;
     this.i = -1;
+    this.ended = false; // scene objects are reused, so reset per-run flags
+    this.busy = false;
   }
 
   create() {
@@ -117,8 +121,14 @@ export default class Cutscene extends Phaser.Scene {
       this.stage.removeAll(true);
       this.tweens.killTweensOf(this.stage);
       const before = this.children.list.length;
+      const w3d = store.w3d?.active ? store.w3d : null;
       if (this.textures.exists(`cut_${shot.shot}`)) {
+        w3d?.unstage();
         this.add.image(0, 0, `cut_${shot.shot}`).setOrigin(0).setDisplaySize(960, H);
+      } else if (w3d && SHOTS_3D[shot.shot]) {
+        ensureCrowd(this, 560);
+        w3d.stage(this.textures, SHOTS_3D[shot.shot]); // filmed in the 3D village
+        this.fade3d(1);
       } else STAGING[shot.shot](this);
       // gather what the staging added into the stage container, so it can drift slowly
       const added = this.children.list.slice(before);
@@ -133,14 +143,25 @@ export default class Cutscene extends Phaser.Scene {
     this.busy = true;
     if (this.i === 0) show();
     else {
+      this.fade3d(0);
       this.cameras.main.fadeOut(250);
       this.cameras.main.once('camerafadeoutcomplete', show);
     }
   }
 
+  /** Fade the 3D view (a separate canvas under this one). */
+  fade3d(to) {
+    const cv = store.w3d?.active && store.w3d.renderer.domElement;
+    if (!cv) return;
+    cv.style.transition = 'opacity 0.3s';
+    cv.style.opacity = String(to);
+  }
+
   end() {
     if (this.ended) return;
     this.ended = true;
+    store.w3d?.unstage();
+    this.fade3d(1);
     this.scene.get('Hud').sys.setVisible(true);
     this.data_.onDone({});
   }
