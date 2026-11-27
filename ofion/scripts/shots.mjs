@@ -53,6 +53,8 @@ await shot('04-barter-give');
 await key('Escape');
 await goto(2560, 13 * 60);
 await shot('05-ini-compound-day');
+await key('KeyE');
+await shot('05b-ini-talk');
 await goto(3050, 18 * 60 + 40);
 await shot('06-palm-grove-dusk');
 await key('KeyE');

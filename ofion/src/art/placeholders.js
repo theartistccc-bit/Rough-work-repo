@@ -328,6 +328,54 @@ function bust(style) {
   };
 }
 
+// ---------- portraits (dialogs) ----------
+// Placeholder head-and-shoulders. Meant to be replaced by real portraits:
+// ./assets/portrait_<who>.png / .jpg / .webp, any size near 5:6 (e.g. 600x720).
+function portrait(o) {
+  return (g, w, h) => {
+    const cx = w / 2;
+    const skin = o.skin ?? P.skin;
+    g.fillStyle(0x5a3a24, 1);
+    g.fillRect(0, 0, w, h);
+    for (let r = w * 0.7; r > 0; r -= 12) { g.fillStyle(0xc8873a, 0.035); g.fillCircle(cx, h * 0.4, r); }
+    // shoulders and wrapper
+    g.fillStyle(skin, 1);
+    g.fillEllipse(cx, h * 1.02, w * 0.95, h * 0.42);
+    g.fillStyle(o.wrapper, 1);
+    g.fillRect(cx - w * 0.48, o.wrapChest ? h * 0.9 : h * 0.97, w * 0.96, h * 0.1);
+    if (o.beads) { g.fillStyle(P.coral, 1); for (let i = -5; i <= 5; i++) g.fillCircle(cx + i * 11, h * 0.84 - Math.abs(i) * 1.2, 5); }
+    // neck and head with simple side light for volume
+    g.fillStyle(skin, 1);
+    g.fillRect(cx - 26, h * 0.6, 52, h * 0.2);
+    g.fillEllipse(cx, h * 0.45, w * 0.44, h * 0.42);
+    g.fillStyle(0x000000, 0.18);
+    g.fillEllipse(cx + w * 0.08, h * 0.47, w * 0.3, h * 0.38);
+    g.fillStyle(P.skinLight, 0.35);
+    g.fillEllipse(cx - w * 0.07, h * 0.42, w * 0.2, h * 0.28);
+    // features
+    g.fillStyle(0x1a0f0a, 1);
+    g.fillEllipse(cx - 24, h * 0.44, 16, 7);
+    g.fillEllipse(cx + 24, h * 0.44, 16, 7);
+    g.fillStyle(0x2e1a10, 0.8);
+    g.fillEllipse(cx, h * 0.52, 18, 10);
+    g.fillStyle(0x4a2418, 1);
+    g.fillEllipse(cx, h * 0.585, 30, 8);
+    if (o.camwood) { g.fillStyle(P.camwood, 0.45); g.fillCircle(cx - 34, h * 0.52, 7); g.fillCircle(cx + 34, h * 0.52, 7); }
+    // hair
+    g.fillStyle(o.hair === 'grey' ? 0xbdb6a8 : P.hair, 1);
+    if (o.hair === 'tall') {
+      g.fillEllipse(cx, h * 0.26, w * 0.46, h * 0.16);
+      g.fillEllipse(cx, h * 0.15, w * 0.3, h * 0.14);
+      g.fillEllipse(cx, h * 0.07, w * 0.18, h * 0.1);
+    } else {
+      g.fillEllipse(cx, h * 0.27, w * 0.45, h * 0.13);
+    }
+    if (o.cap) { g.fillStyle(o.cap, 1); g.fillRect(cx - w * 0.22, h * 0.21, w * 0.44, h * 0.06); }
+    g.lineStyle(6, 0xc8873a, 0.9);
+    g.strokeRect(3, 3, w - 6, h - 6);
+  };
+}
+
 // ---------- goods icons ----------
 const ICONS = {
   fish: (g, w, h) => {
@@ -439,4 +487,18 @@ export const SPRITES = {
   bust_crest: { w: 180, h: 220, paint: bust('crest') },
   bust_crown: { w: 180, h: 220, paint: bust('crown') },
 };
+const PORTRAIT = { w: 300, h: 360 };
+const PORTRAITS = {
+  player: { wrapper: P.indigo },
+  ini: { wrapper: P.red, wrapChest: true, beads: true, camwood: true, hair: 'tall', skin: P.skinLight },
+  elder: { wrapper: P.cream, hair: 'grey' },
+  fishwife: { wrapper: P.water, wrapChest: true, cap: P.indigo },
+  farmer: { wrapper: P.ochre },
+  adorner: { wrapper: P.camwood, wrapChest: true, beads: true, cap: P.coral },
+  wrestler: { wrapper: P.mudDark, camwood: true },
+  affiong: { wrapper: P.indigo, wrapChest: true, beads: true, hair: 'tall' },
+  nkoyo: { wrapper: P.ochre, wrapChest: true, beads: true, hair: 'tall' },
+  ekaette: { wrapper: P.palm, wrapChest: true, beads: true, hair: 'tall' },
+};
+for (const [who, o] of Object.entries(PORTRAITS)) SPRITES[`portrait_${who}`] = { ...PORTRAIT, paint: portrait(o) };
 for (const [good, paint] of Object.entries(ICONS)) SPRITES[`icon_${good}`] = { w: 32, h: 32, paint };

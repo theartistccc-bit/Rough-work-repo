@@ -16,6 +16,8 @@ export default class Contest extends MiniBase {
       const x = 240 + i * 160;
       const bust = e.player ? styleId : rivalStyles[CONTEST.rivals.findIndex((r) => r.name === e.name) % 3];
       this.add.image(x, 200, `bust_${bust}`).setDisplaySize(110, 134).setTint(e.player ? 0xffffff : 0xf0e0d0);
+      const face = this.add.image(x - 52, 150, `portrait_${e.player ? 'ini' : e.name.toLowerCase()}`);
+      face.setScale(Math.min(46 / face.frame.width, 56 / face.frame.height));
       text(this, x, 275, e.name, 18, e.player ? '#f0c070' : '#f2e6cc').setOrigin(0.5);
       text(this, x, 296, `by ${e.styler}`, 13, '#c8b090').setOrigin(0.5);
       const s = text(this, x, 330, '', 14, '#f2e6cc', { align: 'center', lineSpacing: 2 }).setOrigin(0.5, 0);

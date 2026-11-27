@@ -306,7 +306,7 @@ export default class Village extends Phaser.Scene {
       onPick: () => this.barterGive(id, get),
     }));
     this.say(`${t.name}'s stall`, `"Abadie! What do you need? I take ${wants}." \n\nNo one here buys with money: goods go for goods.`,
-      [...opts, { label: 'Leave' }], { image: `trader_${id}` });
+      [...opts, { label: 'Leave' }], { image: `portrait_${id}` });
   }
 
   barterGive(id, get) {
@@ -380,7 +380,7 @@ export default class Village extends Phaser.Scene {
         return;
       }
       this.say(tale.title, tale.lines[i], [{ label: i < tale.lines.length - 1 ? 'Listen on' : 'Clap for the elder', onPick: () => page(i + 1) }],
-        { image: 'elder', onBack: () => page(tale.lines.length) });
+        { image: 'portrait_elder', onBack: () => page(tale.lines.length) });
     };
     page(0);
   }
@@ -404,7 +404,7 @@ export default class Village extends Phaser.Scene {
         });
       },
     }));
-    this.say('The wrestling ground', 'Drums and clapping under the moon. Who will you face? Best of three throws.', [...opts, { label: 'Just watch' }]);
+    this.say('The wrestling ground', 'Drums and clapping under the moon. Who will you face? Best of three throws.', [...opts, { label: 'Just watch' }], { image: 'portrait_wrestler' });
   }
 
   // ---------------------------------------------------------------- Ini
@@ -428,7 +428,7 @@ export default class Village extends Phaser.Scene {
       { label: giftable.length ? 'Offer a gift' : 'Offer a gift (nothing she would like)', disabled: !giftable.length, onPick: () => this.giftMenu() },
       { label: 'Ask about the festival', onPick: () => this.say('Ini', `"Every ${TIME.festivalEvery}th day the village holds the festival. The maidens' hair is judged on craft, adornment and spirit. Affiong, Nkoyo and Ekaette will all be dressed. A stylist needs raffia thread, coral beads, camwood and a good comb."\n\nThe next festival is day ${Math.ceil(g.clock.day / TIME.festivalEvery) * TIME.festivalEvery}.`) },
       { label: 'Go well' },
-    ], { image: 'ini' });
+    ], { image: 'portrait_ini' });
   }
 
   giftMenu() {
@@ -496,6 +496,6 @@ export default class Village extends Phaser.Scene {
       title = `Ini places ${['', 'first', 'second', 'third', 'fourth'][place]}`;
       body = `${ranked[0].name}'s hair, dressed by ${ranked[0].styler}, wins the day. Ini laughs it off: "Next festival, we practise." Gather finer materials and plait more carefully.`;
     }
-    this.say(title, body, [{ label: g.ending ? 'Keep living in the village' : 'Dance into the night' }], { image: 'ini' });
+    this.say(title, body, [{ label: g.ending ? 'Keep living in the village' : 'Dance into the night' }], { image: 'portrait_ini' });
   }
 }

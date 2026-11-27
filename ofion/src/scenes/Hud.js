@@ -153,11 +153,13 @@ export default class Hud extends Phaser.Scene {
     const cols = opt.length > 5 ? 2 : 1;
     const rows = Math.ceil(opt.length / cols);
     const W = cols === 2 ? 760 : 600;
-    const bodyW = opts.image ? W - 190 : W - 48;
+    const isPortrait = opts.image?.startsWith('portrait_');
+    const slot = isPortrait ? { w: 150, h: 180 } : { w: 130, h: 140 };
+    const bodyW = opts.image ? W - slot.w - 70 : W - 48;
     const c = this.add.container(0, 0).setDepth(30);
     const tTitle = text(this, 0, 0, opts.title ?? '', 24, '#f0c070');
     const tBody = text(this, 0, 0, opts.body ?? '', 17, CREAM, { wordWrap: { width: bodyW }, lineSpacing: 5 });
-    const bodyH = Math.max(tBody.height, opts.image ? 140 : 0);
+    const bodyH = Math.max(tBody.height, opts.image ? slot.h : 0);
     const H = 70 + bodyH + rows * 50 + 16;
     const x = 480 - W / 2;
     const y = Math.max(8, Math.min(532 - H, Math.max(72, 290 - H / 2)));
@@ -167,9 +169,10 @@ export default class Hud extends Phaser.Scene {
     tBody.setPosition(x + 24, y + 58);
     c.add([tTitle, tBody]);
     if (opts.image) {
-      const img = this.add.image(x + W - 92, y + 58, opts.image).setOrigin(0.5, 0);
+      const img = this.add.image(x + W - 24 - slot.w / 2, y + 58, opts.image).setOrigin(0.5, 0);
       const src = img.frame;
-      const k = Math.min(130 / src.width, 140 / src.height);
+      // fit inside the slot, keeping the picture's own proportions
+      const k = Math.min(slot.w / src.width, slot.h / src.height);
       img.setDisplaySize(src.width * k, src.height * k);
       c.add(img);
     }
