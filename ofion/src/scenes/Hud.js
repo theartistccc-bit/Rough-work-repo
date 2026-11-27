@@ -4,6 +4,7 @@ import { GOODS, HUNGER } from '../logic/config.js';
 import { formatClock, phaseAt } from '../logic/dayCycle.js';
 import { status } from '../logic/hunger.js';
 import { stage } from '../logic/courtship.js';
+import { goalText } from '../logic/story.js';
 import { zoneAt } from '../world.js';
 import { baked, button, panel, pill, text, CREAM } from '../ui.js';
 
@@ -83,6 +84,10 @@ export default class Hud extends Phaser.Scene {
     this.barText = text(this, 270, 64, '', 13, CREAM).setOrigin(1, 0.5);
     panel(this, 700, 10, 250, 78, 0.85);
     this.rightText = text(this, 716, 20, '', 15, CREAM, { lineSpacing: 4 });
+    // the current story goal, always visible under the clock
+    this.goalText = text(this, 16, 98, '', 14, CREAM, {
+      backgroundColor: '#3a2414d9', padding: { x: 10, y: 6 }, wordWrap: { width: 420 },
+    });
   }
 
   update(time, dt) {
@@ -94,7 +99,7 @@ export default class Hud extends Phaser.Scene {
     const fullness = Math.round(g.fullness);
     const vx = this.scene.get('Village')?.player?.x ?? 0;
     const sig = [Math.floor(g.clock.minute), g.clock.day, fullness, JSON.stringify(g.inv),
-      g.wisdom, g.renown, g.courtship.affection, zoneAt(vx)].join('|');
+      g.wisdom, g.renown, g.courtship.affection, zoneAt(vx), g.story.chapter].join('|');
     if (sig === this.sig) return;
     this.sig = sig;
     this.clockText.setText(`${formatClock(g.clock)}  ${phaseAt(g.clock.minute)}`);
@@ -106,6 +111,7 @@ export default class Hud extends Phaser.Scene {
     this.rightText.setText(
       `Wisdom ${g.wisdom}   Renown ${g.renown}\nIni: ${stage(g.courtship.affection)} (${g.courtship.affection})`,
     );
+    this.goalText.setText(`◆ ${goalText(g)}`);
     this.drawInventory();
   }
 

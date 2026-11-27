@@ -42,6 +42,7 @@ await wait(1500);
 await shot('01-title');
 await key('Enter');
 await wait(800);
+await shot('01b-prologue');
 await set(() => { const s = window.__ofion.store.g; s.inv = { yam: 3, fish: 4, palmwine: 3, thread: 2, beads: 1, camwood: 1 }; });
 await goto(820, 9 * 60);
 await shot('02-home-morning');

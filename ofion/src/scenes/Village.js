@@ -13,6 +13,7 @@ import { gift, stage, talk } from '../logic/courtship.js';
 import { adornmentsUsed, playerEntry, rank, rivalEntries, styleById } from '../logic/contest.js';
 import { remove } from '../logic/inventory.js';
 import { passMinutes, sleepGame, tick } from '../logic/state.js';
+import { PROLOGUE, checkStory, epilogue } from '../logic/story.js';
 
 const h = (hh, mm = 0) => hh * 60 + mm;
 const label = (good) => GOODS[good].label;
@@ -34,8 +35,11 @@ export default class Village extends Phaser.Scene {
     this.onPress = (name) => this.handlePress(name);
     this.game.events.on('press', this.onPress);
     this.events.once('shutdown', () => this.game.events.off('press', this.onPress));
-    this.time.delayedCall(300, () => this.hud.toast(
-      'Walk with ◀ ▶ (A/D). Act with ● (E or Space). Q or ✕ opens your satchel.', 4500));
+    this.storyT = 0;
+    this.time.delayedCall(300, () => {
+      if (!store.g.story.prologueSeen) this.prologue(0);
+      else this.hud.toast('Walk with ◀ ▶ (A/D). Act with ● (E or Space). Q or ✕ opens your satchel.', 4500);
+    });
     this.time.delayedCall(5000, () => this.announceDay());
   }
 
@@ -112,6 +116,11 @@ export default class Village extends Phaser.Scene {
         this.hud.toast('You are starving. You walk slowly and cannot climb or wrestle. Eat!');
       }
       if (g.fullness > 5) this.warnedStarving = false;
+    }
+    this.storyT += dt;
+    if (this.storyT > 400 && !store.dialog && !store.minigame) {
+      this.storyT = 0;
+      this.advanceStory();
     }
     this.water.tilePositionX += dt * 0.01;
     this.far.tilePositionX = this.cameras.main.scrollX * 0.3 / this.far.tileScaleX;
@@ -320,6 +329,7 @@ export default class Village extends Phaser.Scene {
         disabled: n == null || have < n,
         onPick: () => {
           const r = trade(g.market, id, g.inv, give, get);
+          if (r.ok) g.stats.trades += 1;
           passMinutes(g, 5);
           this.hud.toast(r.ok ? `You give ${r.gave} ${label(give).toLowerCase()} for 1 ${label(get).toLowerCase()}. "Sosongo!"` : 'The trade falls through.');
           this.barterGive(id, get);
@@ -340,6 +350,7 @@ export default class Village extends Phaser.Scene {
       passMinutes(g, 20);
       if (r.caught) {
         g.inv.fish = (g.inv.fish ?? 0) + r.caught;
+        g.stats.fishCaught += r.caught;
         this.hud.toast(`You land ${r.caught} fish.`);
       }
     });
@@ -356,6 +367,7 @@ export default class Village extends Phaser.Scene {
       passMinutes(g, 30);
       if (r.done) {
         g.treesTapped.push(i);
+        g.stats.climbs += 1;
         g.inv.palmwine = (g.inv.palmwine ?? 0) + 1;
         this.hud.toast('The gourd is full of sweet palm wine.');
       } else this.hud.toast('You slide back down. Alternate your grips: ◀ ▶ ◀ ▶');
@@ -371,6 +383,7 @@ export default class Village extends Phaser.Scene {
     const page = (i) => {
       if (i >= tale.lines.length) {
         g.talesTonight += 1;
+        g.stats.tales += 1;
         passMinutes(g, 30);
         if (isNew) {
           g.talesHeard.push(tale.id);
@@ -399,6 +412,7 @@ export default class Village extends Phaser.Scene {
           passMinutes(g, 30);
           if (r.won) {
             g.renown += WRESTLE.renownPerWin;
+            g.stats.wrestleWins += 1;
             this.hud.toast(`You throw ${o.name}! The drums answer. Renown ${g.renown}.`);
           } else this.hud.toast(`${o.name} throws you in the sand. The crowd laughs kindly.`);
         });
@@ -496,6 +510,32 @@ export default class Village extends Phaser.Scene {
       title = `Ini places ${['', 'first', 'second', 'third', 'fourth'][place]}`;
       body = `${ranked[0].name}'s hair, dressed by ${ranked[0].styler}, wins the day. Ini laughs it off: "Next festival, we practise." Gather finer materials and plait more carefully.`;
     }
-    this.say(title, body, [{ label: g.ending ? 'Keep living in the village' : 'Dance into the night' }], { image: 'portrait_ini' });
+    const first = g.festivalsEntered.length === 1;
+    const next = () => this.say(first ? 'Epilogue' : 'After the festival', epilogue(place, c.affection),
+      [{ label: g.ending ? 'Keep living in the village' : 'Dance into the night' }], { image: 'portrait_ini' });
+    this.say(title, body, [{ label: 'Continue', onPick: next }], { image: 'portrait_ini', onBack: next });
+  }
+
+  // ---------------------------------------------------------------- story
+  prologue(i) {
+    const g = store.g;
+    const pages = PROLOGUE.pages;
+    if (i >= pages.length) {
+      g.story.prologueSeen = true;
+      this.hud.toast('Walk with ◀ ▶ (A/D). Act with ● (E or Space). Q or ✕ opens your satchel.', 4500);
+      return;
+    }
+    this.say(i === 0 ? PROLOGUE.title : '', pages[i],
+      [{ label: i < pages.length - 1 ? 'Go on' : 'Begin', onPick: () => this.prologue(i + 1) }],
+      { image: 'portrait_player', onBack: () => this.prologue(pages.length) });
+  }
+
+  advanceStory() {
+    const r = checkStory(store.g);
+    if (!r || !r.chapter.outro) return;
+    const rewards = Object.entries(r.chapter.reward ?? {}).map(([k, n]) => `+${n} ${label(k).toLowerCase()}`).join(', ');
+    const nextLine = r.next ? `\n\nNext: ${r.next.title}.` : '';
+    this.say(`Chapter done: ${r.chapter.title}`, `${r.chapter.outro}${rewards ? ` (${rewards})` : ''}${nextLine}`,
+      [{ label: 'Go on' }], { image: r.chapter.id === 'basket' ? 'portrait_player' : 'portrait_ini' });
   }
 }

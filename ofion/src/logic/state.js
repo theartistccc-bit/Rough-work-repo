@@ -5,6 +5,7 @@ import { createInventory } from './inventory.js';
 import { createMarket } from './barter.js';
 import { createCourtship } from './courtship.js';
 import { makeRng } from './rng.js';
+import { createStats, createStory } from './story.js';
 
 const SAVE_VERSION = 1;
 
@@ -25,6 +26,8 @@ export function createGame(seed = Date.now() % 100000) {
     wrestledTonight: [],
     festivalsEntered: [],
     ending: null,
+    story: createStory(),
+    stats: createStats(),
   };
   attachRng(g);
   return g;
@@ -73,6 +76,8 @@ export const serialize = (g) => JSON.stringify(g);
 export function deserialize(json) {
   const g = JSON.parse(json);
   if (g?.v !== SAVE_VERSION) return null;
+  g.story ??= createStory(); // saves from before the story existed
+  g.stats ??= createStats();
   attachRng(g);
   return g;
 }
