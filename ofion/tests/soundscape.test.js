@@ -18,6 +18,8 @@ describe('soundscape', () => {
   it('festival music during the contest, anywhere in the village', () => {
     expect(soundscape(4, h(17), 500).music).toBe('festival');
     expect(soundscape(3, h(17), 500).music).toBe('day');
+    expect(soundscape(4, h(13), 2100).music).toBe('festival'); // the square fills from noon
+    expect(soundscape(4, h(13), 900).music).toBe('day');
   });
 
   it('dawn and dusk are quiet between songs', () => {

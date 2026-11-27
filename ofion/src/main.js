@@ -10,6 +10,12 @@ import Climb from './scenes/Climb.js';
 import Wrestle from './scenes/Wrestle.js';
 import Plait from './scenes/Plait.js';
 import Contest from './scenes/Contest.js';
+import Periwinkle from './scenes/Periwinkle.js';
+import Pound from './scenes/Pound.js';
+import Soup from './scenes/Soup.js';
+import Paddle from './scenes/Paddle.js';
+import Upriver from './scenes/Upriver.js';
+import Cutscene from './scenes/Cutscene.js';
 import * as audio from './audio.js';
 
 const game = new Phaser.Game({
@@ -24,7 +30,7 @@ const game = new Phaser.Game({
   input: { activePointers: 3 },
   disableContextMenu: true,
   banner: false,
-  scene: [Boot, Title, Village, Hud, Fishing, Climb, Wrestle, Plait, Contest],
+  scene: [Boot, Title, Village, Hud, Fishing, Climb, Wrestle, Plait, Contest, Periwinkle, Pound, Soup, Paddle, Upriver, Cutscene],
 });
 
 window.__ofion = { game, store, audio }; // used by the screenshot, perf and sound scripts

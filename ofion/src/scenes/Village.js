@@ -2,9 +2,8 @@ import Phaser from 'phaser';
 import { save, store } from '../store.js';
 import { place, strip } from '../art/textures.js';
 import { baked } from '../ui.js';
-import { ensureFx } from './fx.js';
 import { GROUND_Y, PLACES, REACH, VIEW, WALK_SPEED, WORLD_W } from '../world.js';
-import { BARTER, CONTEST, COURTSHIP, GOODS, HUNGER, TALES, TIME, WRESTLE } from '../logic/config.js';
+import { ACTIVITIES, BARTER, CONTEST, COURTSHIP, GOODS, HUNGER, TALES, TIME, WRESTLE } from '../logic/config.js';
 import {
   isContestTime, isFestivalDay, isMarketOpen, isMoonlightPlay, lightLevel, phaseAt,
 } from '../logic/dayCycle.js';
@@ -15,6 +14,8 @@ import { adornmentsUsed, playerEntry, rank, rivalEntries, styleById } from '../l
 import { remove } from '../logic/inventory.js';
 import { passMinutes, sleepGame, tick } from '../logic/state.js';
 import { PROLOGUE, checkStory, epilogue } from '../logic/story.js';
+import { canCook, cookSoup, eatSoup, poundGain, shareSoup, upriverOpen } from '../logic/activities.js';
+import { ensureCrowd, ensureFx } from './fx.js';
 import * as audio from '../audio.js';
 
 const h = (hh, mm = 0) => hh * 60 + mm;
@@ -71,7 +72,7 @@ export default class Village extends Phaser.Scene {
     const prop = (key, x, y = GROUND_Y + 4, d = 5) => place(this, key, x, y).setDepth(d);
     prop('mangrove', 90, GROUND_Y + 30);
     prop('jetty', 330, GROUND_Y + 50, 4.5);
-    prop('canoe', 150, GROUND_Y + 22, 4.6);
+    prop('canoe', PLACES.canoe - 40, GROUND_Y + 22, 4.6);
     prop('hut', PLACES.home);
     for (const [id, x] of Object.entries(PLACES.traders)) prop(`stall_${id}`, x);
     prop('shade_tree', PLACES.elder - 40);
@@ -92,8 +93,22 @@ export default class Village extends Phaser.Scene {
     person('judge1', 'elder', PLACES.judges - 30, 0xffe0c0);
     person('judge2', 'elder', PLACES.judges + 20, 0xe0d0ff).setFlipX(true);
     WRESTLE.opponents.forEach((o, i) => person(`w${i}`, 'wrestler', PLACES.ring - 60 + i * 55, [0xffffff, 0xffd8b0, 0xd8c0a0][i]));
-    CONTEST.rivals.forEach((r, i) => person(`r${i}`, `rival_${r.name.toLowerCase()}`, PLACES.judges + 80 + i * 40));
+    CONTEST.rivals.forEach((r, i) => {
+      const p = person(`r${i}`, `rival_${r.name.toLowerCase()}`, PLACES.judges + 80 + i * 40);
+      this.tweens.add({ targets: p, angle: i % 2 ? 4 : -4, duration: 320 + i * 50, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    });
     this.ini = person('ini', 'ini', PLACES.iniDay).setFlipX(true);
+
+    // festival day: a crowd and drummers fill the square from noon
+    this.festCrowd = this.add.image(1820, GROUND_Y - 100, ensureCrowd(this, 560)).setOrigin(0).setDepth(4.8).setTint(0x8a6040);
+    this.tweens.add({ targets: this.festCrowd, y: GROUND_Y - 104, duration: 260, yoyo: true, repeat: -1 });
+    this.drummers = [0, 1, 2].map((i) => {
+      const d = place(this, 'drummer', 1850 + i * 50, GROUND_Y).setDepth(6);
+      this.add.rectangle(1862 + i * 50, GROUND_Y - 6, 22, 30, 0x6a4a2e).setDepth(6.1).setName('drum');
+      this.tweens.add({ targets: d, y: GROUND_Y - 3, duration: 180 + i * 30, yoyo: true, repeat: -1 });
+      return d;
+    });
+    this.drums = this.children.list.filter((o) => o.name === 'drum');
 
     // night
     this.fire = place(this, 'fire', PLACES.elder + 70, GROUND_Y + 4).setDepth(10);
@@ -190,13 +205,15 @@ export default class Village extends Phaser.Scene {
   updatePeople() {
     const { day, minute: m } = store.g.clock;
     const market = isMarketOpen(m);
-    for (const id of Object.keys(BARTER.traders)) this.npc[id].setVisible(market);
+    for (const id of Object.keys(PLACES.traders)) this.npc[id].setVisible(market);
     const play = isMoonlightPlay(m);
     this.npc.elder.setVisible(play);
     WRESTLE.opponents.forEach((o, i) => this.npc[`w${i}`].setVisible(play && !store.g.wrestledTonight.includes(o.name)));
     const fest = isFestivalDay(day) && m >= h(12) && m <= TIME.festivalContest[1];
     this.npc.judge1.setVisible(fest);
     this.npc.judge2.setVisible(fest);
+    this.festCrowd.setVisible(fest);
+    for (const o of [...this.drummers, ...this.drums]) o.setVisible(fest);
     CONTEST.rivals.forEach((r, i) => this.npc[`r${i}`].setVisible(fest));
     const iniX = this.iniPlace();
     this.ini.setVisible(iniX != null);
@@ -225,11 +242,13 @@ export default class Village extends Phaser.Scene {
     const list = [];
     const add = (x, lbl, act) => lbl && list.push({ x, label: lbl, act });
     add(PLACES.fishingSpot, 'Fish from the jetty', () => this.goFish());
+    if (phaseAt(m) !== 'night') add(PLACES.periwinkles, 'Gather periwinkles from the mangrove roots', () => this.goPeriwinkle());
+    add(PLACES.canoe, upriverOpen(m) ? 'Paddle upriver to the market' : 'Your canoe (the upriver market trip leaves 08:00–14:00)', () => this.goUpriver());
     add(PLACES.home, 'Your house: eat or sleep', () => this.homeMenu());
     if (isMarketOpen(m)) {
       for (const [id, x] of Object.entries(PLACES.traders)) {
         const t = BARTER.traders[id];
-        add(x, `Barter with ${t.name} (${t.trade})`, () => this.barterMenu(id));
+        add(x, `Barter with ${t.name} (${t.trade})`, () => this.barterMenu(id, null));
       }
     }
     if (isMoonlightPlay(m)) {
@@ -265,9 +284,9 @@ export default class Village extends Phaser.Scene {
     this.hud.showDialog({ title, body, options, ...extra });
   }
 
-  runMinigame(key, data, done) {
+  runMinigame(key, data, done, { duck = true } = {}) {
     store.minigame = true;
-    audio.duck(true);
+    if (duck) audio.duck(true);
     this.hud.setPrompt('');
     this.scene.launch(key, {
       ...data,
@@ -319,6 +338,8 @@ export default class Village extends Phaser.Scene {
     const canSleep = m >= h(19) || m < h(5);
     this.say('Your house', 'The hearth is warm. Smoke curls up through the thatch.', [
       ...this.eatOptions(() => this.homeMenu()),
+      { label: g.inv.yam ? 'Pound a yam (better than eating it plain)' : 'Pound a yam (you have none)', disabled: !g.inv.yam || g.fullness > HUNGER.fullAbove, onPick: () => this.goPound() },
+      { label: canCook(g.inv) ? 'Cook edikang ikong soup' : 'Cook edikang ikong (needs periwinkle, fish, palm oil)', disabled: !canCook(g.inv), onPick: () => this.goSoup() },
       { label: canSleep ? 'Sleep until first light' : 'Sleep (only after 19:00)', disabled: !canSleep, onPick: () => this.doSleep() },
       { label: 'Leave' },
     ]);
@@ -338,7 +359,8 @@ export default class Village extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- barter (goods for goods)
-  barterMenu(id) {
+  barterMenu(id, onLeave) {
+    if (onLeave !== undefined) this.barterLeave = onLeave;
     const g = store.g;
     const t = BARTER.traders[id];
     const tr = g.market.traders[id];
@@ -349,7 +371,7 @@ export default class Village extends Phaser.Scene {
       onPick: () => this.barterGive(id, get),
     }));
     this.say(`${t.name}'s stall`, `"Abadie! What do you need? I take ${wants}." \n\nNo one here buys with money: goods go for goods.`,
-      [...opts, { label: 'Leave' }], { image: `portrait_${id}` });
+      [...opts, { label: 'Leave', onPick: () => this.barterLeave?.() }], { image: `portrait_${id}`, onBack: () => this.barterLeave?.() });
   }
 
   barterGive(id, get) {
@@ -496,7 +518,10 @@ export default class Village extends Phaser.Scene {
     const g = store.g;
     const { day, minute: m } = g.clock;
     if (g.festivalsEntered.includes(day)) return this.say('The judges', '"The judging is done. Go and dance!"');
-    if (!isContestTime(day, m)) return this.say('The judges', '"The contest begins at 16:00. Come with your maiden and your materials."');
+    if (!isContestTime(day, m)) {
+      return this.say('The judges', '"The contest begins at 16:00. Come with your maiden and your materials."',
+        [{ label: 'Watch the opening dance', onPick: () => this.festivalOpening(() => {}) }, { label: 'Later' }]);
+    }
     if (g.courtship.affection < COURTSHIP.contestMinAffection) {
       return this.say('The judges', `"Ini? She came with her aunt to dress her hair. She hardly knows you."\n\n(Ini must count you at least an acquaintance: ${COURTSHIP.contestMinAffection} closeness.)`);
     }
@@ -512,6 +537,7 @@ export default class Village extends Phaser.Scene {
 
   startPlait(styleId) {
     const g = store.g;
+    if (g.story.festivalSeen !== g.clock.day) return this.festivalOpening(() => this.startPlait(styleId));
     g.fullness = spend('plait', g.fullness) ?? g.fullness;
     this.runMinigame('Plait', { styleId, seed: g.seed + g.clock.day }, (r) => {
       const items = adornmentsUsed(g.inv);
@@ -545,8 +571,8 @@ export default class Village extends Phaser.Scene {
       body = `${ranked[0].name}'s hair, dressed by ${ranked[0].styler}, wins the day. Ini laughs it off: "Next festival, we practise." Gather finer materials and plait more carefully.`;
     }
     const first = g.festivalsEntered.length === 1;
-    const next = () => this.say(first ? 'Epilogue' : 'After the festival', epilogue(place, c.affection),
-      [{ label: g.ending ? 'Keep living in the village' : 'Dance into the night' }], { image: 'portrait_ini' });
+    const next = () => this.runMinigame('Cutscene', { shots: [{ shot: 'jetty', caption: `${first ? 'Epilogue. ' : ''}${epilogue(place, c.affection)}` }] },
+      () => this.hud.toast(g.ending ? 'Your story is told. Live well in the village.' : 'Life in the village goes on. The next full moon is coming.', 4000), { duck: false });
     this.say(title, body, [{ label: 'Continue', onPick: next }], { image: 'portrait_ini', onBack: next });
   }
 
@@ -559,9 +585,8 @@ export default class Village extends Phaser.Scene {
       this.hud.toast('Walk with ◀ ▶ (A/D). Act with ● (E or Space). Q or ✕ opens your satchel.', 4500);
       return;
     }
-    this.say(i === 0 ? PROLOGUE.title : '', pages[i],
-      [{ label: i < pages.length - 1 ? 'Go on' : 'Begin', onPick: () => this.prologue(i + 1) }],
-      { image: 'portrait_player', onBack: () => this.prologue(pages.length) });
+    const shots = ['creek', 'moon', 'bank', 'creek'].map((shot, j) => ({ shot, caption: pages[j] }));
+    this.runMinigame('Cutscene', { shots }, () => this.prologue(pages.length), { duck: false });
   }
 
   advanceStory() {
@@ -570,7 +595,90 @@ export default class Village extends Phaser.Scene {
     audio.sfx('chapter');
     const rewards = Object.entries(r.chapter.reward ?? {}).map(([k, n]) => `+${n} ${label(k).toLowerCase()}`).join(', ');
     const nextLine = r.next ? `\n\nNext: ${r.next.title}.` : '';
+    if (r.chapter.id === 'tale') {
+      return this.runMinigame('Cutscene', { shots: [{ shot: 'fire', caption: `${r.chapter.outro}${nextLine}` }] }, () => {}, { duck: false });
+    }
     this.say(`Chapter done: ${r.chapter.title}`, `${r.chapter.outro}${rewards ? ` (${rewards})` : ''}${nextLine}`,
       [{ label: 'Go on' }], { image: r.chapter.id === 'basket' ? 'portrait_player' : 'portrait_ini' });
+  }
+
+  // ---------------------------------------------------------------- new activities and places
+  festivalOpening(then) {
+    store.g.story.festivalSeen = store.g.clock.day;
+    this.runMinigame('Cutscene', { shots: [
+      { shot: 'festival', caption: 'The drummers set the pace and the square fills. Affiong, Nkoyo and Ekaette dance in with their hair built high, and the crowd calls each name.' },
+      { shot: 'festival', caption: 'Ini steps in last, her hair still plain. Everyone turns to see who will dress it.' },
+    ] }, then, { duck: false });
+  }
+
+  goPeriwinkle() {
+    const g = store.g;
+    g.fullness = spend('cast', g.fullness);
+    this.runMinigame('Periwinkle', { seed: g.clock.day * 1440 + Math.floor(g.clock.minute) }, (r) => {
+      passMinutes(g, 30);
+      if (r.got) {
+        g.inv.periwinkle = (g.inv.periwinkle ?? 0) + r.got;
+        this.hud.toast(`${r.got} periwinkles in your basket. Good for soup, or for trade upriver.`);
+      }
+    });
+  }
+
+  goPound() {
+    const g = store.g;
+    this.runMinigame('Pound', {}, (r) => {
+      remove(g.inv, 'yam');
+      const gain = poundGain(r.hits);
+      g.fullness = Math.min(HUNGER.max, g.fullness + gain);
+      passMinutes(g, 20);
+      audio.sfx('eat');
+      this.hud.toast(`Pounded yam, soft and filling (+${gain}).`);
+    });
+  }
+
+  goSoup() {
+    const g = store.g;
+    this.runMinigame('Soup', {}, (r) => {
+      if (!r.done) return;
+      const soup = cookSoup(g.inv, r.good);
+      passMinutes(g, 40);
+      const word = soup.quality === 1 ? 'rich and fragrant' : soup.quality >= 0.5 ? 'good' : 'a little thin';
+      this.say('Edikang ikong', `The soup is ${word}. Eat it yourself, or carry a bowl to Ini's house?`, [
+        { label: `Eat it (+${soup.gain} belly)`, onPick: () => { g.fullness = eatSoup(g.fullness, soup); audio.sfx('eat'); } },
+        { label: 'Take a bowl to Ini', onPick: () => {
+          const before = g.courtship.affection;
+          g.courtship.affection = shareSoup(before, soup);
+          passMinutes(g, 30);
+          audio.sfx('chapter');
+          this.hud.toast(`Ini tastes it and raises her eyebrows. "Who taught you?" (+${g.courtship.affection - before})`);
+        } },
+      ], { image: 'icon_pot' });
+    });
+  }
+
+  goUpriver() {
+    const g = store.g;
+    if (!upriverOpen(g.clock.minute)) return this.hud.toast('Too late in the day to reach the upriver market and return. Leave between 08:00 and 14:00.');
+    this.runMinigame('Paddle', { direction: 'up' }, (r) => {
+      if (!r.arrived) return;
+      passMinutes(g, ACTIVITIES.paddle.minutesEachWay);
+      this.openUpriver();
+    });
+  }
+
+  openUpriver() {
+    store.minigame = true;
+    this.hud.setPrompt('');
+    const leave = () => {
+      this.hud.closeDialog();
+      this.scene.stop('Upriver');
+      store.minigame = false;
+      this.runMinigame('Paddle', { direction: 'home' }, () => {
+        passMinutes(store.g, ACTIVITIES.paddle.minutesEachWay);
+        this.player.x = PLACES.canoe;
+        this.hud.toast('Home again, tired from the paddle.');
+      });
+    };
+    this.scene.launch('Upriver', { onTrade: (id, back) => this.barterMenu(id, back), onLeave: leave });
+    this.scene.bringToTop('Hud');
   }
 }

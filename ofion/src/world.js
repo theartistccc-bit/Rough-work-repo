@@ -7,7 +7,9 @@ export const REACH = 70; // how close you must stand to act
 
 export const PLACES = {
   creekEdge: 470,
-  fishingSpot: 300,
+  fishingSpot: 400,
+  periwinkles: 210,
+  canoe: 300,
   home: 800,
   traders: { fishwife: 1230, farmer: 1440, adorner: 1650 },
   elder: 1960,

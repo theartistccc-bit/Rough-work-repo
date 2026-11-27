@@ -75,6 +75,23 @@ export const BARTER = {
       offers: { thread: 4, beads: 3, camwood: 2, comb: 2 },
       markup: 1.25,
     },
+    // upriver, a paddle away: inland people want creek food and part with beads and camwood more cheaply
+    ekpo: {
+      name: 'Ete Ekpo',
+      trade: 'beads and camwood from inland',
+      place: 'upriver',
+      wants: { fish: 1.4, periwinkle: 1.5, palmoil: 1.2 },
+      offers: { beads: 4, camwood: 3, thread: 4 },
+      markup: 0.9,
+    },
+    uduak: {
+      name: 'Eka Uduak',
+      trade: 'pots, combs and yams',
+      place: 'upriver',
+      wants: { periwinkle: 1.3, fish: 1.2, palmwine: 1.0 },
+      offers: { comb: 3, pot: 2, yam: 6 },
+      markup: 1.0,
+    },
   },
 };
 
@@ -175,4 +192,13 @@ export const CONTEST = {
     { name: 'Nkoyo', styler: 'her sister', craft: 5, adornment: 8, spirit: 5.5 },
     { name: 'Ekaette', styler: 'her mother', craft: 6.5, adornment: 6.5, spirit: 6.5 },
   ],
+};
+
+// ---- activities added with the new scenes ----
+export const ACTIVITIES = {
+  periwinkle: { durationMs: 15000, spawnMs: 900, lifeMs: 2200, reach: 0.08, handSpeed: 0.12 },
+  pound: { beats: 8, beatMs: 700, windowMs: 140, base: 30, bonus: 20 },
+  soup: { needs: { periwinkle: 1, fish: 1, palmoil: 1 }, goodHeat: [0.45, 0.75], base: 45, bonus: 35, shareAffection: 10 },
+  paddle: { strokeGain: 0.14, sameSideFactor: 0.5, decayPerSec: 0.55, distPerSpeedSec: 0.09, maxSpeed: 1, minutesEachWay: 60 },
+  upriverOpen: [8 * 60, 14 * 60], // leave early enough to trade and come back
 };

@@ -4,7 +4,7 @@ import { markerAt, throwQuality, wrestleMatch, wrestleRound } from '../logic/min
 import MiniBase from './MiniBase.js';
 import { baked, text } from '../ui.js';
 import { sfx } from '../audio.js';
-import { STAGE, burst, ensureFx, skyPanel, stageMask } from './fx.js';
+import { STAGE, burst, ensureCrowd, ensureFx, skyPanel, stageMask } from './fx.js';
 
 const BAR = { x: 280, y: STAGE.y + STAGE.h - 40, w: 400, h: 20 };
 const FLOOR = STAGE.y + 200;
@@ -21,14 +21,7 @@ export default class Wrestle extends MiniBase {
     const mask = stageMask(this);
     skyPanel(this, 'fish_sky_n', true).setMask(mask);
     // the crowd in a ring of firelight
-    baked(this, 'crowd', STAGE.w, 90, (g) => {
-      for (let i = 0; i < 26; i++) {
-        const x = i * 24 + (i % 2) * 8;
-        const y = 30 + (i % 3) * 8;
-        g.fillStyle(0x1a120c, 1).fillEllipse(x, y + 40, 26, 60).fillCircle(x, y, 10);
-      }
-    }).destroy(); // only the texture is needed
-    this.crowd = this.add.image(STAGE.x, FLOOR - 70, 'crowd').setOrigin(0).setMask(mask);
+    this.crowd = this.add.image(STAGE.x, FLOOR - 70, ensureCrowd(this, STAGE.w)).setOrigin(0).setMask(mask);
     this.tweens.add({ targets: this.crowd, y: FLOOR - 74, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     for (const x of [STAGE.x + 60, STAGE.x + STAGE.w - 60]) {
       this.add.image(x, FLOOR - 10, 'glow').setDisplaySize(220, 220).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7).setMask(mask);

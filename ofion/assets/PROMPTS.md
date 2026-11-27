@@ -148,3 +148,31 @@ The game animates a still `player.png` with a step and a sway. For real walking 
 > Using the attached picture of my character, make a walk-cycle sprite sheet: 6 frames in one horizontal row, the same man in the same style, lighting and clothes, walking to the right, full body, feet on the same baseline in every frame, evenly spaced, each frame the same size, transparent background (a real alpha channel, not a checkerboard). No text.
 
 Attach your finished `player.png` to that message. Each frame should be shaped 44 : 92, like the player sprite. Send me the result and I'll fit and check it.
+
+---
+
+## Added later: upriver traders, drummers, story paintings
+
+Use the Group 1 style block for people and the Group 2 block for portraits, as before.
+
+| File | Prompt |
+|---|---|
+| `trader_ekpo.png` | Ete Ekpo, an older inland Efik/Ibibio trader around sixty, short grey hair, a cream wrapper with a camwood-red band, strands of coral beads hanging over one arm to trade. |
+| `trader_uduak.png` | Eka Uduak, an Efik market woman in her forties, indigo wrapper tied at the chest, ochre head-tie, a carved wooden comb and a small clay pot in her hands. |
+| `drummer.png` | A young Efik drummer, camwood-red wrapper at the waist, camwood on his chest, seated pose leaning forward as if over a skin drum (the drum itself is drawn by the game). |
+| `portrait_ekpo.jpg`, `portrait_uduak.jpg` | Portraits of the two traders above, same descriptions. |
+
+**Story paintings** (960×540, wide). Paste this style block first:
+
+> I'm making full-screen story paintings for a 2D game set in a pre-colonial Efik/Ibibio fishing village on the creeks near Calabar, south-eastern Nigeria. Match the style of the attached character pictures exactly (same faces, clothes and lighting style). Wide 16:9 scene, leave the bottom quarter calm and simple because a caption covers it. No text, no modern items.
+
+Attach `player.png` and `portrait_ini.jpg` so the people match.
+
+| File | Prompt |
+|---|---|
+| `cut_creek.png` | Dawn on a mangrove creek: a wooden jetty, an old dugout canoe, the young fisherman standing on the jetty holding an almost empty woven basket. |
+| `cut_moon.png` | A huge full moon rising over still creek water and a dark line of mangroves and oil palms, its light on the water. No people. |
+| `cut_bank.png` | Ini, laughing, outside her family's mud-walled thatched house by the creek, looking at the young fisherman, who stands a little embarrassed. |
+| `cut_fire.png` | Night in the village square: an elder telling a story by a fire, faces lit warm orange; Ini on the far side of the fire glancing across at the fisherman. |
+| `cut_festival.png` | The festival opening in daylight: drummers seated with skin drums, a crowd clapping, three maidens with tall sculpted festival hairstyles dancing in, Ini stepping in last with plain hair. |
+| `cut_jetty.png` | Night: the fisherman and Ini sitting side by side on the end of the jetty, a full moon above and its reflection on the water, calm and happy. |

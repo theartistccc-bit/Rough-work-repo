@@ -32,6 +32,10 @@ Restart `npm run dev` (or rebuild) after adding a new file.
 | portrait_player, portrait_ini, portrait_elder, portrait_wrestler | 5:6, e.g. 600×720 | faces shown in dialogs |
 | portrait_fishwife, portrait_farmer, portrait_adorner | 5:6 | the three traders' faces |
 | portrait_affiong, portrait_nkoyo, portrait_ekaette | 5:6 | rivals' faces (contest screen) |
+| trader_ekpo, trader_uduak | 44×92 | the two upriver traders |
+| drummer | 44×92 | festival drummers |
+| portrait_ekpo, portrait_uduak | 5:6 | upriver traders' faces |
+| cut_creek, cut_moon, cut_bank, cut_fire, cut_festival, cut_jetty | 960×540 | full-screen story paintings (see below) |
 | icon_fish, icon_yam, icon_plantain, icon_periwinkle, icon_palmwine, icon_palmoil, icon_thread, icon_beads, icon_camwood, icon_comb, icon_pot | 32×32 | goods |
 
 ## Sound and music
@@ -53,3 +57,16 @@ All sound is made in code, so it costs nothing to download. Drop a recording her
 | `sfx_trade`, `sfx_eat`, `sfx_sleep`, `sfx_chapter` | barter, eating, sleeping, story chapter done |
 
 `.mp3`, `.ogg`, `.wav` and `.m4a` all work. Keep loops short (30–60 s) and under about 500 KB each so the game still loads fast. A recording is fetched the first time it's needed, not at startup.
+
+## Story paintings (cutscenes)
+
+Story moments are staged from the game's own pictures until you add a painting. Drop a 960×540 `cut_<name>.png` or `.jpg` to show it instead (text captions still appear over the bottom):
+
+| File | Moment |
+|---|---|
+| `cut_creek` | dawn on the creek, the jetty and canoe, the fisherman with an almost empty basket |
+| `cut_moon` | the full moon over still water |
+| `cut_bank` | Ini outside her family's house, laughing |
+| `cut_fire` | night fire in the square: the elder telling a tale, Ini across the flames |
+| `cut_festival` | the festival opening: drummers, crowd, maidens dancing with high hair |
+| `cut_jetty` | the fisherman and Ini sitting on the jetty under the full moon |

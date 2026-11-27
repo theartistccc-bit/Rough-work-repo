@@ -22,6 +22,22 @@ export function ensureFx(scene) {
   make('fx_dust', 16, 16, (g) => { g.fillStyle(0xd9b27a, 0.5); g.fillCircle(8, 8, 8); });
 }
 
+/** A row of crowd silhouettes, baked once. */
+export function ensureCrowd(scene, w = 620) {
+  const key = `crowd_${w}`;
+  if (!scene.textures.exists(key)) {
+    const g = scene.make.graphics({ add: false });
+    for (let i = 0; i < w / 24; i++) {
+      const x = i * 24 + (i % 2) * 8;
+      const y = 30 + (i % 3) * 8;
+      g.fillStyle(0x1a120c, 1).fillEllipse(x, y + 40, 26, 60).fillCircle(x, y, 10);
+    }
+    g.generateTexture(key, w, 90);
+    g.destroy();
+  }
+  return key;
+}
+
 /** A one-shot burst emitter; call .explode(n, x, y). */
 export function burst(scene, key, cfg) {
   return scene.add.particles(0, 0, key, { emitting: false, ...cfg });

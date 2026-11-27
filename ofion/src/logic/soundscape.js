@@ -1,6 +1,6 @@
 // Which ambience and music fit the moment. Pure, so it is tested like the other rules.
 import { TIME } from './config.js';
-import { isContestTime, isMoonlightPlay, phaseAt } from './dayCycle.js';
+import { isContestTime, isFestivalDay, isMoonlightPlay, phaseAt } from './dayCycle.js';
 
 const SQUARE = [1800, 2380]; // village square, where the fire and drums are
 const CREEK = 640; // the creek is loud left of here
@@ -17,7 +17,8 @@ export function soundscape(day, minute, x) {
   if (phase === 'dawn' || phase === 'dusk') ambience.push('crickets');
 
   let music = night ? 'night' : 'day';
-  if (isContestTime(day, minute)) music = 'festival';
+  const festivalNoon = isFestivalDay(day) && minute >= 12 * 60 && minute <= TIME.festivalContest[1];
+  if (isContestTime(day, minute) || (festivalNoon && inSquare)) music = 'festival';
   else if (isMoonlightPlay(minute) && inSquare) music = 'moonlight';
   else if (phase === 'dawn' || phase === 'dusk') music = null; // a quiet change of light
 

@@ -19,6 +19,7 @@ export const realArt = (key) => Boolean(urls[key]);
 export function queueArt(scene) {
   for (const key of ALL_KEYS) if (urls[key]) scene.load.image(key, urls[key]);
   if (urls.player_walk) scene.load.image('player_walk', urls.player_walk);
+  for (const key of Object.keys(urls)) if (key.startsWith('cut_')) scene.load.image(key, urls[key]); // cutscene paintings
 }
 
 /**
