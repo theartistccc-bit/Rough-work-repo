@@ -3,6 +3,7 @@ import { styleById } from '../logic/contest.js';
 import { makeRng } from '../logic/rng.js';
 import MiniBase from './MiniBase.js';
 import { text } from '../ui.js';
+import { sfx } from '../audio.js';
 
 const MOVE_MS = 2600;
 const SYMBOL = { left: '◀', right: '▶', tuck: '●' };
@@ -46,6 +47,7 @@ export default class Plait extends MiniBase {
   move(m) {
     const i = this.p.i;
     const ok = this.p.pattern[i] === m;
+    sfx(ok ? 'good' : 'miss');
     plaitInput(this.p, m);
     this.cells[i].setColor(ok ? '#a8e070' : '#e06a50');
     this.t = 0;

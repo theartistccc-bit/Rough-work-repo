@@ -2,6 +2,7 @@ import { climbInput, createClimb } from '../logic/minigames.js';
 import MiniBase from './MiniBase.js';
 import { P } from '../art/palette.js';
 import { text } from '../ui.js';
+import { sfx } from '../audio.js';
 
 const LIMIT_MS = 12000;
 
@@ -44,13 +45,15 @@ export default class Climb extends MiniBase {
       .fillStyle(0x8ab84a, 1).fillRect(220, 390 - 260 * this.c.progress, 16, 260 * this.c.progress);
     const left = Math.max(0, (LIMIT_MS - this.t) / 1000);
     this.timeText.setText(`${left.toFixed(1)}s`);
+    if (this.c.done && !this.finished) sfx('wine');
     if (this.c.done) this.finish({ done: true }, 'You reach the crown and take the gourd!');
-    else if (left <= 0) this.finish({ done: false }, 'Your arms tire and you slide down.');
+    else if (left <= 0) sfx('slip'), this.finish({ done: false }, 'Your arms tire and you slide down.');
   }
 
   press(name) {
     if (name === 'back') return this.finish({ done: false }, 'You climb back down.', 400);
     if (name === 'left' || name === 'right') {
+      sfx(name === this.c.last ? 'slip' : 'grip');
       climbInput(this.c, name);
       this.climber.x = 480 + (name === 'left' ? -6 : 6);
     }

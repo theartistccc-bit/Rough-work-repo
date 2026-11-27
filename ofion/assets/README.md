@@ -33,3 +33,23 @@ Restart `npm run dev` (or rebuild) after adding a new file.
 | portrait_fishwife, portrait_farmer, portrait_adorner | 5:6 | the three traders' faces |
 | portrait_affiong, portrait_nkoyo, portrait_ekaette | 5:6 | rivals' faces (contest screen) |
 | icon_fish, icon_yam, icon_plantain, icon_periwinkle, icon_palmwine, icon_palmoil, icon_thread, icon_beads, icon_camwood, icon_comb, icon_pot | 32×32 | goods |
+
+## Sound and music
+
+All sound is made in code, so it costs nothing to download. Drop a recording here to replace any of it, with no code change:
+
+| File | Plays |
+|---|---|
+| `music_day.mp3` | daytime music, anywhere in the village (loops) |
+| `music_night.mp3` | late-night music (loops) |
+| `music_moonlight.mp3` | drums in the village square, 20:00 to midnight (loops) |
+| `music_festival.mp3` | the contest, 16:00–19:00 on festival days (loops) |
+| `sfx_click`, `sfx_open` | menu tap, menu opens |
+| `sfx_bite`, `sfx_splash`, `sfx_catch` | fishing |
+| `sfx_grip`, `sfx_slip`, `sfx_wine` | palm climbing |
+| `sfx_thud`, `sfx_cheer`, `sfx_lose` | wrestling |
+| `sfx_good`, `sfx_miss` | plaiting moves |
+| `sfx_reveal`, `sfx_win` | contest scores, Ini wins |
+| `sfx_trade`, `sfx_eat`, `sfx_sleep`, `sfx_chapter` | barter, eating, sleeping, story chapter done |
+
+`.mp3`, `.ogg`, `.wav` and `.m4a` all work. Keep loops short (30–60 s) and under about 500 KB each so the game still loads fast. A recording is fetched the first time it's needed, not at startup.

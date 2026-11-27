@@ -3,6 +3,7 @@ import { makeRng } from '../logic/rng.js';
 import MiniBase from './MiniBase.js';
 import { text } from '../ui.js';
 import { P } from '../art/palette.js';
+import { sfx } from '../audio.js';
 
 export default class Fishing extends MiniBase {
   constructor() { super('Fishing'); }
@@ -26,12 +27,14 @@ export default class Fishing extends MiniBase {
   update(time, dt) {
     if (this.finished) return;
     this.t += dt;
+    const before = this.f.state;
     const st = stepFishing(this.f, dt);
+    if (st === 'biting' && before !== 'biting') sfx('bite');
     const bob = st === 'biting' ? 10 + Math.sin(this.t / 40) * 5 : Math.sin(this.t / 400) * 3;
     this.float.y = 250 + bob;
     this.mark.setVisible(st === 'biting');
     this.line.clear().lineStyle(2, 0xf2e6cc, 0.7).lineBetween(480, 60, 480, this.float.y - 8);
-    if (st === 'escaped') this.result('It slipped away…');
+    if (st === 'escaped') { sfx('splash'); this.result('It slipped away…'); }
   }
 
   press(name) {
@@ -40,8 +43,9 @@ export default class Fishing extends MiniBase {
     const st = pullFishing(this.f);
     if (st === 'caught') {
       this.caught += 1;
+      sfx('catch');
       this.result('A fish! ● to cast again, ✕ / Q to stop.');
-    } else if (st === 'early') this.result('Too early: the fish is scared off.');
+    } else if (st === 'early') sfx('splash'), this.result('Too early: the fish is scared off.');
     else if (st === 'escaped' || st === 'caught-done') this.recast();
   }
 

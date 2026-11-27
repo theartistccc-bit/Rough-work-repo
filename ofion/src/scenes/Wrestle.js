@@ -3,6 +3,7 @@ import { markerAt, throwQuality, wrestleMatch, wrestleRound } from '../logic/min
 import MiniBase from './MiniBase.js';
 import { P } from '../art/palette.js';
 import { text } from '../ui.js';
+import { sfx } from '../audio.js';
 
 const BAR = { x: 230, y: 300, w: 500, h: 26 };
 
@@ -41,9 +42,11 @@ export default class Wrestle extends MiniBase {
     const q = throwQuality(markerAt(this.t, this.speed));
     const won = wrestleRound(q, this.data_.opponent.skill, this.data_.renown, this.data_.fullness);
     this.rounds.push(won);
+    sfx('thud');
     this.tweens.add({ targets: won ? this.them : this.me, angle: won ? 80 : -80, duration: 200, yoyo: true, hold: 300 });
     this.score.setText(this.rounds.map((r) => (r ? '●' : '○')).join('  '));
     const state = wrestleMatch(this.rounds);
+    if (state !== 'ongoing') sfx(state === 'won' ? 'cheer' : 'lose');
     if (state !== 'ongoing') return this.finish({ won: state === 'won' }, state === 'won' ? 'You win the bout!' : 'You lose the bout.');
     this.paused = true;
     this.hint.setText(won ? 'A clean throw!' : 'He holds firm…');

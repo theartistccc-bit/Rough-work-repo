@@ -7,6 +7,7 @@ import { stage } from '../logic/courtship.js';
 import { goalText } from '../logic/story.js';
 import { zoneAt } from '../world.js';
 import { baked, button, panel, pill, text, CREAM } from '../ui.js';
+import { isMuted, sfx, toggleMute } from '../audio.js';
 
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
@@ -36,6 +37,9 @@ export default class Hud extends Phaser.Scene {
     this.input.keyboard.on('keydown', (e) => this.onKey(e, true));
     this.input.keyboard.on('keyup', (e) => this.onKey(e, false));
     if (this.touch) this.buildTouch();
+    this.muteBtn = text(this, 944, 100, '', 15, CREAM, { backgroundColor: '#3a2414d9', padding: { x: 10, y: 6 } })
+      .setOrigin(1, 0).setInteractive({ useHandCursor: true }).on('pointerup', () => this.flipMute());
+    this.showMute();
     this.events.on('shutdown', () => { store.held.left = store.held.right = false; });
   }
 
@@ -48,8 +52,18 @@ export default class Hud extends Phaser.Scene {
     const name = KEYMAP[e.code];
     if (name === 'left' || name === 'right') store.held[name] = down;
     if (!down || e.repeat) return;
+    if (e.code === 'KeyM') return this.flipMute();
     if (/^Digit[1-9]$/.test(e.code)) return this.press('pick', Number(e.code.slice(5)) - 1);
     if (name) this.press(name);
+  }
+
+  flipMute() {
+    toggleMute();
+    this.showMute();
+  }
+
+  showMute() {
+    this.muteBtn.setText(isMuted() ? '♪ off (M)' : '♪ on (M)');
   }
 
   // ---------- touch ----------
@@ -155,6 +169,7 @@ export default class Hud extends Phaser.Scene {
   showDialog(opts) {
     this.closeDialog(true);
     store.dialog = true;
+    sfx('open');
     const opt = opts.options ?? [];
     const cols = opt.length > 5 ? 2 : 1;
     const rows = Math.ceil(opt.length / cols);
@@ -226,6 +241,7 @@ export default class Hud extends Phaser.Scene {
   pick(i) {
     const o = this.dialog?.opts.options?.[i];
     if (!o || o.disabled) return;
+    sfx('click');
     this.closeDialog();
     o.onPick?.();
   }

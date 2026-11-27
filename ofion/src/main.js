@@ -10,6 +10,7 @@ import Climb from './scenes/Climb.js';
 import Wrestle from './scenes/Wrestle.js';
 import Plait from './scenes/Plait.js';
 import Contest from './scenes/Contest.js';
+import * as audio from './audio.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -26,4 +27,6 @@ const game = new Phaser.Game({
   scene: [Boot, Title, Village, Hud, Fishing, Climb, Wrestle, Plait, Contest],
 });
 
-window.__ofion = { game, store }; // used by the screenshot and perf scripts
+window.__ofion = { game, store, audio }; // used by the screenshot, perf and sound scripts
+// browsers start sound only after the player touches or presses something
+for (const ev of ['pointerdown', 'keydown', 'touchend']) window.addEventListener(ev, audio.unlock, { passive: true });

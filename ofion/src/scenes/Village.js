@@ -14,6 +14,7 @@ import { adornmentsUsed, playerEntry, rank, rivalEntries, styleById } from '../l
 import { remove } from '../logic/inventory.js';
 import { passMinutes, sleepGame, tick } from '../logic/state.js';
 import { PROLOGUE, checkStory, epilogue } from '../logic/story.js';
+import * as audio from '../audio.js';
 
 const h = (hh, mm = 0) => hh * 60 + mm;
 const label = (good) => GOODS[good].label;
@@ -113,9 +114,15 @@ export default class Village extends Phaser.Scene {
       if (tick(g, dt, { walking: dir !== 0 })) this.announceDay();
       if (status(g.fullness) === 'starving' && !this.warnedStarving) {
         this.warnedStarving = true;
+        audio.sfx('miss');
         this.hud.toast('You are starving. You walk slowly and cannot climb or wrestle. Eat!');
       }
       if (g.fullness > 5) this.warnedStarving = false;
+    }
+    this.audioT = (this.audioT ?? 0) + dt;
+    if (this.audioT > 250) {
+      this.audioT = 0;
+      audio.update(g.clock.day, g.clock.minute, this.player.x);
     }
     this.storyT += dt;
     if (this.storyT > 400 && !store.dialog && !store.minigame) {
@@ -237,12 +244,14 @@ export default class Village extends Phaser.Scene {
 
   runMinigame(key, data, done) {
     store.minigame = true;
+    audio.duck(true);
     this.hud.setPrompt('');
     this.scene.launch(key, {
       ...data,
       onDone: (result) => {
         this.scene.stop(key);
         store.minigame = false;
+        audio.duck(false);
         done(result);
       },
     });
@@ -264,6 +273,7 @@ export default class Village extends Phaser.Scene {
     const g = store.g;
     const r = eat(g.fullness, g.inv, food);
     if (r.ok) {
+      audio.sfx('eat');
       g.fullness = r.fullness;
       passMinutes(g, 15);
       this.hud.toast(food === 'meal' ? 'Roast yam and fish. Your belly is warm.' : `You eat the ${label(food).toLowerCase()}.`);
@@ -293,6 +303,7 @@ export default class Village extends Phaser.Scene {
 
   doSleep() {
     const g = store.g;
+    audio.sfx('sleep');
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once('camerafadeoutcomplete', () => {
       sleepGame(g);
@@ -329,7 +340,7 @@ export default class Village extends Phaser.Scene {
         disabled: n == null || have < n,
         onPick: () => {
           const r = trade(g.market, id, g.inv, give, get);
-          if (r.ok) g.stats.trades += 1;
+          if (r.ok) { g.stats.trades += 1; audio.sfx('trade'); }
           passMinutes(g, 5);
           this.hud.toast(r.ok ? `You give ${r.gave} ${label(give).toLowerCase()} for 1 ${label(get).toLowerCase()}. "Sosongo!"` : 'The trade falls through.');
           this.barterGive(id, get);
@@ -533,6 +544,7 @@ export default class Village extends Phaser.Scene {
   advanceStory() {
     const r = checkStory(store.g);
     if (!r || !r.chapter.outro) return;
+    audio.sfx('chapter');
     const rewards = Object.entries(r.chapter.reward ?? {}).map(([k, n]) => `+${n} ${label(k).toLowerCase()}`).join(', ');
     const nextLine = r.next ? `\n\nNext: ${r.next.title}.` : '';
     this.say(`Chapter done: ${r.chapter.title}`, `${r.chapter.outro}${rewards ? ` (${rewards})` : ''}${nextLine}`,
