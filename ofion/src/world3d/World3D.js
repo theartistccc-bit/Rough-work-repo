@@ -465,6 +465,26 @@ export class World3D {
     return this.addProp(rope);
   }
 
+  /**
+   * The tapper's climbing belt: one loop around the trunk and his lower back.
+   * Returns { set(trunkX, trunkY, backX, backY, z) } to stretch it between the two each frame.
+   */
+  makeBelt() {
+    const group = new THREE.Group();
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.028, 6, 24), lam(0xb08a4a));
+    loop.rotation.x = Math.PI / 2; // lies round the trunk
+    group.add(loop);
+    this.addProp(group);
+    return {
+      set(ax, ay, bx, by, z) {
+        const len = Math.hypot(bx - ax, by - ay);
+        group.position.set((ax + bx) / 2, (ay + by) / 2, z);
+        group.rotation.z = Math.atan2(by - ay, bx - ax); // tilted along the line from trunk to back
+        loop.scale.set((len / 2 + 0.16) / 0.5, 0.3 / 0.5, 1); // long enough to wrap both, as deep as the trunk
+      },
+    };
+  }
+
   /** A temporary object for a staged moment (the climbing rope). */
   addProp(mesh) {
     this.props.push(mesh);

@@ -11,6 +11,12 @@ const FIRE = toWorldX(PLACES.elder) + 0.8;
 const SQUARE = toWorldX(PLACES.ring);
 
 export const SHOTS_3D = {
+  // the title: dusk over the creek, drifting from the jetty toward the village
+  title: {
+    minute: H(18, 35), ms: 26000, moon: [JETTY + 9, 7.5, -34],
+    cam: { from: [[JETTY - 1.5, 2.1, 8], [JETTY + 2.5, 1.4, -3]], to: [[JETTY + 6.5, 2.5, 9.5], [JETTY + 9.5, 1.5, -3]] },
+    actors: [{ key: 'player', x: JETTY + 0.6, y: DECK, z: 0.5 }],
+  },
   // dawn on the creek: the fisherman on the jetty, mangroves behind
   creek: {
     minute: H(6, 30), ms: 9000,
@@ -71,7 +77,7 @@ export const SHOTS_3D = {
 /** The climb: the camera rides beside the climber, up the trunk of palm i. */
 export function climbCamera(palmX, z, y, progress) {
   return {
-    pos: [palmX + 0.1, y + 1.25 + progress * 0.4, z + 3.8], // from the front, so neighbouring palms stay to the sides
-    look: [palmX, y + 1.1 + progress * 0.9, z],
+    pos: [palmX + 1.1, y + 1.3 + progress * 0.4, z + 3.9], // in front and a little to the side: trunk, belt and lean all in view
+    look: [palmX + 0.45, y + 1.0 + progress * 0.9, z],
   };
 }

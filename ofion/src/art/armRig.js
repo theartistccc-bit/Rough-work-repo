@@ -69,6 +69,7 @@ export function armActors(rig, { x, y = 0, z, h = 1.75, cropTop = 1, flip = fals
     piece('rig_armR', rig.pivots.right, 0.004),
   ];
   const off = (pivot) => [(flip ? -1 : 1) * (pivot[0] - rig.w / 2) * s, (shownH - pivot[1]) * s];
+  const turn = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
   const offL = off(rig.pivots.left);
   const offR = off(rig.pivots.right);
   return {
@@ -78,16 +79,29 @@ export function armActors(rig, { x, y = 0, z, h = 1.75, cropTop = 1, flip = fals
     place([armL, body, armR], px, py, pz, angL = 0, angR = 0, bodyRot = 0) {
       body.position.set(px, py, pz);
       body.material.rotation = bodyRot;
-      armL.position.set(px + offL[0], py + offL[1], pz - 0.004);
-      armR.position.set(px + offR[0], py + offR[1], pz + 0.004);
+      // the shoulders turn with the body about its base, so the arms stay attached when he leans
+      const [lx, ly] = turn(offL, bodyRot);
+      const [rx, ry] = turn(offR, bodyRot);
+      armL.position.set(px + lx, py + ly, pz - 0.004);
+      armR.position.set(px + rx, py + ry, pz + 0.004);
       armL.material.rotation = angL;
       armR.material.rotation = angR;
     },
+    /** World position of a shoulder for a body at (px, py) turned by bodyRot. */
+    shoulder(side, px, py, bodyRot = 0) {
+      const [ox, oy] = turn(side === 'left' ? offL : offR, bodyRot);
+      return [px + ox, py + oy];
+    },
+    /** The arm rotation that points a hand from its shoulder toward a world point. */
+    aim(side, px, py, bodyRot, tx, ty) {
+      const [sx, sy] = this.shoulder(side, px, py, bodyRot);
+      return Math.atan2(tx - sx, -(ty - sy));
+    },
     /** World position of a hand given its shoulder and screen rotation. */
-    hand(side, px, py, ang) {
-      const o = side === 'left' ? offL : offR;
+    hand(side, px, py, ang, bodyRot = 0) {
+      const [sx, sy] = this.shoulder(side, px, py, bodyRot);
       const len = rig.armLen[side] * s * 0.92;
-      return [px + o[0] + Math.sin(ang) * len, py + o[1] - Math.cos(ang) * len];
+      return [sx + Math.sin(ang) * len, sy - Math.cos(ang) * len];
     },
   };
 }

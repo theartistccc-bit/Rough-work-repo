@@ -762,6 +762,7 @@ export default class Village extends Phaser.Scene {
     } catch {
       return; // no WebGL for a second canvas: keep the 2D village
     }
+    this.w3d.unstage(); // end the title's camera drift
     this.cameras.main.setVisible(false);
     this.w3d.show(true);
     this.events.once('shutdown', () => this.w3d.show(false));

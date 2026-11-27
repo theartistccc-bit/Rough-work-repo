@@ -11,7 +11,7 @@ import { LANES, toWorldX } from '../world3d/layout.js';
 import { climbCamera } from '../world3d/shots.js';
 import { stripFrames } from '../art/textures.js';
 import { armActors, makeArmRig } from '../art/armRig.js';
-import { climbArms } from '../art/arms.js';
+import { BELT, beltLean, beltMove, createBeltClimb, stepBelt } from '../art/beltClimb.js';
 
 const LIMIT_MS = 12000;
 const TRUNK_X = 480;
@@ -117,7 +117,8 @@ export default class Climb extends MiniBase {
     });
     this.climber = this.climbFrames ? this.pieces[0] : this.pieces[1];
     this.gripSide = 1;
-    this.rope = w.makeRope(0.5); // loops round the trunk and the climber's back
+    this.belt = w.makeBelt(); // loops round the trunk and the climber's lower back
+    this.bc = createBeltClimb();
     this.events.once('shutdown', () => w.unstage());
     // progress and time, small and out of the way
     this.add.rectangle(40, 150, 16, 260, 0x000000, 0.45).setOrigin(0.5, 0);
@@ -141,21 +142,30 @@ export default class Climb extends MiniBase {
     if (this.climbFrames) this.w3d.setActorFrame(this.climber, Math.floor(this.gripT * (this.climbFrames - 1)));
     this.sway *= 0.9;
     this.shake *= 0.85;
-    const y = this.shown * this.topY;
-    // the climber hugs the trunk, reaching up with each grip; the rope rides at the waist
-    // he presses against the side of the trunk, leaning in, so the trunk stays in sight beside him
-    const bx = this.px + 0.52 + this.sway * 0.04;
-    const by = y + this.reach * 0.14;
+    // the tapper's way up: feet braced on the trunk, leaning back into a belt round trunk and back
+    stepBelt(this.bc, dt);
+    const y = this.bc.feet;
+    const z = this.pz + 0.14;
+    const footX = this.px + 0.2; // feet against the bark
+    const lean = -(beltLean(this.bc.belt) + this.shake * 6) * (Math.PI / 180); // top tips away from the trunk
+    const beltY = y + this.bc.belt;
+    const trunkFront = this.px + 0.1;
     if (this.arms) {
-      // hand over hand: one arm stretches up the trunk while the other pulls down, swapping each grip
-      const a = climbArms(this.gripT, this.gripSide);
-      const rad = Math.PI / 180;
-      this.arms.place(this.pieces, bx, by, this.pz + 0.12, -a.left * rad, a.right * rad, 0.1 + this.sway * 0.05);
+      this.arms.place(this.pieces, footX, y, z, 0, 0, lean);
+      // both hands hold the belt where it meets the trunk; they lift it as it is hitched up
+      const lift = this.bc.beltTarget === BELT.high && this.bc.belt < BELT.high - 0.02 ? 0.12 : 0;
+      const aL = this.arms.aim('left', footX, y, lean, trunkFront, beltY + 0.12 + lift);
+      const aR = this.arms.aim('right', footX, y, lean, trunkFront + 0.05, beltY + lift);
+      this.arms.place(this.pieces, footX, y, z, aL, aR, lean);
     } else {
-      this.climber.position.set(bx, by, this.pz + 0.12);
-      this.climber.material.rotation = 0.12 + this.sway * 0.06;
+      this.climber.position.set(footX, y, z);
+      this.climber.material.rotation = lean;
     }
-    this.rope.position.set(this.px + 0.26, y + 0.95 + this.reach * 0.06, this.pz + 0.06);
+    // the belt runs from the trunk to the small of his back
+    const back = 0.95;
+    const backX = footX - Math.sin(lean) * back;
+    const backY = y + Math.cos(lean) * back;
+    this.belt.set(this.px, beltY, backX, backY, this.pz + 0.04);
     const cam = climbCamera(this.px, this.pz, y, this.shown);
     const j = this.shake * 0.08;
     this.w3d.stageCam = { pos: [cam.pos[0] + (Math.random() - 0.5) * j, cam.pos[1] + (Math.random() - 0.5) * j, cam.pos[2]], look: cam.look };
@@ -170,6 +180,8 @@ export default class Climb extends MiniBase {
     } else if (left <= 0) {
       sfx('slip');
       this.c.progress = 0;
+      this.bc.feetTarget = 0;
+      this.bc.beltTarget = BELT.low;
       this.finish({ done: false }, 'Your arms tire and you slide down.');
     }
   }
@@ -181,6 +193,7 @@ export default class Climb extends MiniBase {
     sfx(slip ? 'slip' : 'grip');
     climbInput(this.c, name);
     const side = name === 'left' ? -1 : 1;
+    beltMove(this.bc, this.c.progress * this.topY, slip);
     if (slip) {
       this.shake = 1;
       this.reach = -1;
