@@ -17,6 +17,7 @@ import { PROLOGUE, checkStory, epilogue } from '../logic/story.js';
 import { canCook, cookSoup, eatSoup, poundGain, shareSoup, upriverOpen } from '../logic/activities.js';
 import { ensureCrowd, ensureFx } from './fx.js';
 import * as audio from '../audio.js';
+import { STRIDE_PX, findLegs, gaitPose } from '../art/rig.js';
 
 const h = (hh, mm = 0) => hh * 60 + mm;
 const label = (good) => GOODS[good].label;
@@ -34,6 +35,9 @@ export default class Village extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12, 0, 40);
     this.walkT = 0;
     this.hasWalk = this.anims.exists('walk');
+    this.phase = 0;
+    this.gait = 0; // 0 standing .. 1 walking, eased so starts and stops are smooth
+    this.rig = this.hasWalk ? null : this.buildRig();
     ensureFx(this);
     this.dust = this.add.particles(0, 0, 'fx_dust', {
       emitting: false, speed: { min: 10, max: 40 }, angle: { min: 200, max: 340 }, lifespan: 450,
@@ -130,11 +134,13 @@ export default class Village extends Phaser.Scene {
         const v = WALK_SPEED * speedFactor(g.fullness) * dir;
         this.player.x = Phaser.Math.Clamp(this.player.x + (v * dt) / 1000, 200, WORLD_W - 60);
         this.player.setFlipX(dir < 0);
-        const before = Math.sin(this.walkT / 110);
+        // the stride advances with distance covered, so feet never skate on the ground
+        const before = Math.cos(this.phase);
+        this.phase += ((Math.abs(v) * dt) / 1000 / STRIDE_PX) * Math.PI * 2;
         this.walkT += dt;
-        if (Math.sign(before) !== Math.sign(Math.sin(this.walkT / 110))) this.dust.explode(3, this.player.x - dir * 6, GROUND_Y); // a footfall
+        if (Math.sign(before) !== Math.sign(Math.cos(this.phase))) this.dust.explode(3, this.player.x - dir * 8, GROUND_Y); // heel strike
       } else this.walkT = 0;
-      this.animateWalk(dir !== 0);
+      this.animateWalk(dir !== 0, dt);
       if (tick(g, dt, { walking: dir !== 0 })) this.announceDay();
       if (status(g.fullness) === 'starving' && !this.warnedStarving) {
         this.warnedStarving = true;
@@ -162,7 +168,54 @@ export default class Village extends Phaser.Scene {
   }
 
   /** A real walk cycle if one was supplied, otherwise a step-bob and sway on the still picture. */
-  animateWalk(walking) {
+  /** Cut the player picture into body and two lower legs. Returns null if the legs can't be found. */
+  buildRig() {
+    const tex = this.textures.get('player');
+    const src = tex.getSourceImage();
+    const w = src.width;
+    const h = src.height;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(src, 0, 0);
+    const px = ctx.getImageData(0, 0, w, h).data;
+    const solid = (x, y) => px[(y * w + x) * 4 + 3] > 40;
+    const legs = findLegs(solid, w, h);
+    if (!legs) return null;
+    const { legTop, split } = legs;
+    // centre of each leg just below the cut: the knee each shin swings from
+    const row = Math.min(h - 1, legTop + Math.round((h - legTop) * 0.25));
+    const centre = (x0, x1) => {
+      let sum = 0; let n = 0;
+      for (let x = x0; x < x1; x++) if (solid(x, row)) { sum += x; n += 1; }
+      return n ? sum / n : (x0 + x1) / 2;
+    };
+    const lc = centre(0, split);
+    const rc = centre(split, w);
+    const overlap = Math.round(h * 0.04);
+    if (!tex.has('rig_upper')) {
+      tex.add('rig_upper', 0, 0, 0, w, legTop + overlap);
+      tex.add('rig_legL', 0, 0, legTop, split, h - legTop);
+      tex.add('rig_legR', 0, split, legTop, w - split, h - legTop);
+    }
+    const sx = 44 / w;
+    const sy = 92 / h;
+    const mk = (frame, ox, oy) => this.add.image(0, 0, 'player', frame).setOrigin(ox, oy).setScale(sx, sy).setDepth(7);
+    const rig = {
+      sx, sy, w, legTop,
+      upper: mk('rig_upper', 0.5, legTop / (legTop + overlap)),
+      legL: mk('rig_legL', lc / split, 0).setDepth(6.95),
+      legR: mk('rig_legR', (rc - split) / (w - split), 0).setDepth(6.95),
+      lx: lc - w / 2, rx: rc - w / 2,
+      olx: lc / split, orx: (rc - split) / (w - split), // knee pivots within each leg piece
+    };
+    this.player.setAlpha(0); // the whole picture still leads the camera and the logic
+    this.lit.push(rig.upper, rig.legL, rig.legR);
+    this.tintK = null; // repaint day/night on the new parts
+    return rig;
+  }
+
+  animateWalk(walking, dt = 16) {
     const p = this.player;
     if (this.hasWalk) {
       if (walking && p.anims?.currentAnim?.key !== 'walk') p.play('walk').setDisplaySize(44, 92);
@@ -170,9 +223,24 @@ export default class Village extends Phaser.Scene {
       p.y = GROUND_Y;
       return;
     }
-    const s = Math.sin(this.walkT / 110);
-    p.y = GROUND_Y - Math.abs(s) * 4;
-    p.setAngle(walking ? s * 2.5 : 0);
+    const r = this.rig;
+    // ease into and out of the stride; when stopping, let the legs settle together
+    this.gait += ((walking ? 1 : 0) - this.gait) * Math.min(1, dt / 120);
+    if (!walking) this.phase += (Math.round(this.phase / Math.PI) * Math.PI - this.phase) * Math.min(1, dt / 90);
+    if (!r) {
+      const s = Math.sin(this.phase);
+      p.y = GROUND_Y - Math.abs(s) * 4 * this.gait;
+      p.setAngle(s * 2.5 * this.gait);
+      return;
+    }
+    const pose = gaitPose(this.phase, this.gait);
+    const face = p.flipX ? -1 : 1;
+    const hipY = GROUND_Y - 92 + r.legTop * r.sy + pose.bob;
+    // walking side-on, the legs pass close together; standing, they keep the picture's stance
+    const narrow = 1 - 0.85 * this.gait;
+    r.upper.setPosition(p.x, hipY).setFlipX(p.flipX).setAngle(face * (pose.lean + pose.sway));
+    r.legL.setOrigin(p.flipX ? 1 - r.olx : r.olx, 0).setPosition(p.x + face * r.lx * r.sx * narrow, hipY).setFlipX(p.flipX).setAngle(face * pose.front);
+    r.legR.setOrigin(p.flipX ? 1 - r.orx : r.orx, 0).setPosition(p.x + face * r.rx * r.sx * narrow, hipY).setFlipX(p.flipX).setAngle(face * pose.back);
   }
 
   updateLight(time) {
